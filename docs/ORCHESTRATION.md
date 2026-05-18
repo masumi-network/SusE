@@ -16,16 +16,16 @@ She decides:
 
 ## Specialists
 
-| Slug | Name | Use When |
+| Slug | Use When | Do Not Use When |
 | --- | --- | --- |
-| `lexi` | Lexi | supply chain, suppliers, sourcing, sustainability risks |
-| `emil-conrad` | Emil-Conrad | green claims, legal/compliance wording, EmpCo, UWG |
-| `diddy-p` | Diddy P. | Digital Product Passport, EU DPP readiness |
-| `food-co2-analyst` | Food CO2 Analyst | food product CO2 footprint calculations |
+| `lexi` | supplier, vendor, sourcing, procurement, traceability, Scope 3, due diligence, supply-chain risk | request is only food CO2 calculation, claim wording/compliance, or DPP fields |
+| `emil-conrad` | green claims, greenwashing, advertising, labels, consumer-facing wording, EmpCo/UWG, substantiation | request is only numeric CO2 calculation, supplier risk, or DPP planning |
+| `diddy-p` | Digital Product Passport, DPP, ESPR, battery passport, data carrier, passport field mapping | request is only CO2 calculation, claim wording, or supplier risk |
+| `food-co2-analyst` | CO2/CO2e/carbon-footprint/LCA/emission-factor calculations for food, recipes, meals, beverages, or ingredients; explicit "CO2 analyst/agent" requests | request is only supplier/procurement risk, legal claim review, or DPP planning |
 
 ## Call Policy
 
-Default: call only needed specialists.
+Default: call only needed specialists. Narrow intent should map to one specialist.
 
 Broad assessment examples may call multiple specialists:
 
@@ -37,9 +37,17 @@ Broad assessment examples may call multiple specialists:
 Narrow examples usually call one:
 
 - "Estimate CO2 for this food item" -> Food CO2 Analyst
+- "Use the CO2 analyst for this ingredient footprint estimate" -> Food CO2 Analyst
 - "Is this green claim risky in Germany?" -> Emil-Conrad
 - "What DPP fields do I need?" -> Diddy P.
 - "Assess supplier risks" -> Lexi
+
+Routing guardrails:
+
+- Do not send a food CO2 calculation to procurement/supply-chain support unless supplier, sourcing, vendor, traceability, or Scope 3 context is explicitly part of the ask.
+- Do not send a green-claim review to the CO2 calculator unless the user asks for a footprint number, emission factor, LCA, CO2e estimate, or recipe/product footprint.
+- Do not send a DPP field/schema request to legal or procurement support unless the user asks for claim compliance or supplier evidence gaps.
+- If the ask has multiple explicit intents, use multiple specialists; otherwise keep the call set minimal.
 
 ## Specialist Brief Shape
 
