@@ -17,7 +17,7 @@ Acceptance:
 
 ## Phase 1 - Sokosumi Chat
 
-Status: complete for local/test contract. Needs live Sokosumi verification after deploy.
+Status: complete. Live production Responses endpoint verified after Sokosumi preprod registration.
 
 - Conversations endpoints.
 - Responses endpoint.
@@ -49,7 +49,7 @@ Acceptance:
 
 ## Phase 3 - Task Board
 
-Status: complete for code path. Needs live Sokosumi Task Board verification after deploy.
+Status: complete for code path. Poller starts in production with verified coworker API key; needs a real Task Board event smoke test.
 
 - Vendored/adapted `pi-sokosumi` client and poller.
 - Poll ready task events.
@@ -83,7 +83,7 @@ Acceptance:
 
 ## Phase 5 - Registration
 
-Status: production Railway deploy complete. Sokosumi marketplace registration still pending.
+Status: complete for preprod registration.
 
 - Register SuSE as Sokosumi coworker.
 - Base URL: `https://<domain>/v1`.
@@ -92,5 +92,6 @@ Status: production Railway deploy complete. Sokosumi marketplace registration st
 
 Acceptance:
 
-- Sokosumi chat works.
-- Task Board works.
+- Sokosumi preprod `/coworkers/me` returns SuSE.
+- Production `/v1/responses` returns completed chat response.
+- Task Board poller starts; real task event smoke test still pending.

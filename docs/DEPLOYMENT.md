@@ -11,6 +11,8 @@ App service: SusE
 Database service: Postgres
 Public URL: https://suse-production.up.railway.app
 Sokosumi base URL: https://suse-production.up.railway.app/v1
+Sokosumi preprod coworker id: 019e3a55-c2bb-75cc-b239-2bcf5a0f9021
+Sokosumi preprod slug: suse
 ```
 
 Current production status:
@@ -20,6 +22,10 @@ Current production status:
 - `SUSE_STORAGE=postgres`.
 - Public smoke test passes.
 - `GET /health` reports `storageMode: "postgres"`.
+- Sokosumi preprod registration is whitelisted with `chat` and `tasks` capabilities.
+- `SOKOSUMI_COWORKER_API_KEY` is set on Railway and verified against `/v1/coworkers/me`.
+- `SOKOSUMI_TASK_POLLER_ENABLED=true`; recent Railway logs show the poller starts.
+- Current deployed runtime/specialist modes are still `stub` until OpenRouter and Langdock mode variables are enabled.
 
 ## Build
 
@@ -92,10 +98,14 @@ The smoke test checks:
 
 ## Sokosumi Registration
 
-Use base URL:
+Current preprod registration:
 
 ```txt
-https://<suse-domain>/v1
+id: 019e3a55-c2bb-75cc-b239-2bcf5a0f9021
+slug: suse
+name: SuSE
+baseURL: https://suse-production.up.railway.app/v1
+isWhitelisted: true
 ```
 
 Capabilities:

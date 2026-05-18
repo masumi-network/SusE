@@ -18,11 +18,18 @@ Implemented:
 - Sokosumi Task Board poller with RUNNING/COMPLETED/FAILED events.
 - Railway production deploy.
 - Railway Postgres storage live and smoke-tested.
+- Sokosumi preprod coworker registration: `suse`, whitelisted, `chat` and `tasks`.
 
 Production URL:
 
 ```txt
 https://suse-production.up.railway.app
+```
+
+Sokosumi base URL:
+
+```txt
+https://suse-production.up.railway.app/v1
 ```
 
 ## Product Shape
