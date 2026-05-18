@@ -26,6 +26,8 @@ export type AppConfig = {
     temperature: number;
     maxCompletionTokens: number;
     timeoutMs: number;
+    maxAttempts: number;
+    retryDelayMs: number;
     siteUrl: string;
     appName: string;
   };
@@ -33,6 +35,8 @@ export type AppConfig = {
     apiKey: string;
     baseUrl: string;
     timeoutMs: number;
+    maxAttempts: number;
+    retryDelayMs: number;
     agentIds: SpecialistAgentIds;
   };
   sokosumi: {
@@ -68,6 +72,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       temperature: parseNumber(env.OPENROUTER_TEMPERATURE, 0.2),
       maxCompletionTokens: parsePositiveInteger(env.OPENROUTER_MAX_COMPLETION_TOKENS, 1200),
       timeoutMs: parsePositiveInteger(env.OPENROUTER_TIMEOUT_MS, 30000),
+      maxAttempts: parsePositiveInteger(env.OPENROUTER_MAX_ATTEMPTS, 2),
+      retryDelayMs: parsePositiveInteger(env.OPENROUTER_RETRY_DELAY_MS, 300),
       siteUrl: env.OPENROUTER_SITE_URL || publicBaseUrl,
       appName: env.OPENROUTER_APP_NAME || agentName
     },
@@ -75,6 +81,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       apiKey: env.LANGDOCK_API_KEY || "",
       baseUrl: stripTrailingSlash(env.LANGDOCK_BASE_URL || "https://api.langdock.com"),
       timeoutMs: parsePositiveInteger(env.LANGDOCK_TIMEOUT_MS, 45000),
+      maxAttempts: parsePositiveInteger(env.LANGDOCK_MAX_ATTEMPTS, 2),
+      retryDelayMs: parsePositiveInteger(env.LANGDOCK_RETRY_DELAY_MS, 300),
       agentIds: {
         lexi: env.LANGDOCK_AGENT_ID_LEXI || "",
         emilConrad: env.LANGDOCK_AGENT_ID_EMIL_CONRAD || "",

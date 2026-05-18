@@ -1,4 +1,5 @@
 import type { AppConfig } from "../config.js";
+import { canRetryAttempt, retryDelayMs, shouldRetryHttpStatus, sleep } from "../utils/retry.js";
 import type { Specialist, SpecialistSlug } from "./specialists.js";
 
 export type LangdockFinding = {
@@ -34,64 +35,83 @@ export async function callLangdockSpecialist({
     };
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.langdock.timeoutMs);
+  for (let attempt = 1; attempt <= config.langdock.maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), config.langdock.timeoutMs);
 
-  try {
-    const response = await fetchImpl(`${config.langdock.baseUrl}/agent/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.langdock.apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        agentId,
-        messages: createSpecialistMessages(specialist, brief),
-        stream: false
-      }),
-      signal: controller.signal
-    });
+    try {
+      const response = await fetchImpl(`${config.langdock.baseUrl}/agent/v1/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.langdock.apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          agentId,
+          messages: createSpecialistMessages(specialist, brief),
+          stream: false
+        }),
+        signal: controller.signal
+      });
 
-    const rawBody = await response.text();
-    const body = parseJson(rawBody);
+      const rawBody = await response.text();
+      const body = parseJson(rawBody);
 
-    if (!response.ok) {
+      if (!response.ok) {
+        if (shouldRetryHttpStatus(response.status) && canRetryAttempt(attempt, config.langdock)) {
+          await sleep(retryDelayMs(attempt, config.langdock));
+          continue;
+        }
+
+        return {
+          specialist,
+          status: "failed",
+          content: "",
+          error: `Langdock returned HTTP ${response.status}.`
+        };
+      }
+
+      const content = extractAssistantContent(body);
+      if (!content) {
+        return {
+          specialist,
+          status: "failed",
+          content: "",
+          error: "Langdock response did not include assistant content."
+        };
+      }
+
+      return {
+        specialist,
+        status: "completed",
+        content
+      };
+    } catch (error) {
+      if (canRetryAttempt(attempt, config.langdock)) {
+        await sleep(retryDelayMs(attempt, config.langdock));
+        continue;
+      }
+
       return {
         specialist,
         status: "failed",
         content: "",
-        error: `Langdock returned HTTP ${response.status}.`
+        error:
+          error instanceof Error && error.name === "AbortError"
+            ? `Langdock request timed out after ${config.langdock.timeoutMs}ms.`
+            : errorMessage(error)
       };
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const content = extractAssistantContent(body);
-    if (!content) {
-      return {
-        specialist,
-        status: "failed",
-        content: "",
-        error: "Langdock response did not include assistant content."
-      };
-    }
-
-    return {
-      specialist,
-      status: "completed",
-      content
-    };
-  } catch (error) {
-    return {
-      specialist,
-      status: "failed",
-      content: "",
-      error:
-        error instanceof Error && error.name === "AbortError"
-          ? `Langdock request timed out after ${config.langdock.timeoutMs}ms.`
-          : errorMessage(error)
-    };
-  } finally {
-    clearTimeout(timeout);
   }
+
+  return {
+    specialist,
+    status: "failed",
+    content: "",
+    error: "Langdock request failed."
+  };
 }
 
 function createSpecialistMessages(specialist: Specialist, brief: string): LangdockMessage[] {
@@ -162,4 +182,3 @@ function errorMessage(error: unknown): string {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
-

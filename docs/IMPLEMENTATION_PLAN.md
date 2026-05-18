@@ -65,7 +65,7 @@ Acceptance:
 
 ## Phase 4 - Production Hardening
 
-Status: partially complete. Basic tests, log redaction, readiness checks, Postgres migrations, adapter timeouts, and partial specialist failure fallback exist.
+Status: partially complete. Basic tests, log redaction, readiness checks, Postgres migrations, adapter timeouts, transient outbound retries, and partial specialist failure fallback exist.
 
 - Structured logs.
 - Redaction.

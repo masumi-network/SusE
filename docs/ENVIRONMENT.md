@@ -38,6 +38,8 @@ No secrets in git. Set these in Railway.
 | `LANGDOCK_AGENT_ID_DIDDY_P` | yes | Diddy P. agent id |
 | `LANGDOCK_AGENT_ID_FOOD_CO2_ANALYST` | yes | Food CO2 Analyst agent id |
 | `LANGDOCK_TIMEOUT_MS` | no | default `45000` |
+| `LANGDOCK_MAX_ATTEMPTS` | no | default `2`; retries transient 408/409/425/429/5xx |
+| `LANGDOCK_RETRY_DELAY_MS` | no | default `300`; linear backoff base |
 
 ## OpenRouter
 
@@ -49,6 +51,8 @@ No secrets in git. Set these in Railway.
 | `OPENROUTER_TEMPERATURE` | no | recommended `0.2` to `0.4` |
 | `OPENROUTER_MAX_COMPLETION_TOKENS` | no | default `1200` |
 | `OPENROUTER_TIMEOUT_MS` | no | default `30000` |
+| `OPENROUTER_MAX_ATTEMPTS` | no | default `2`; retries transient 408/409/425/429/5xx |
+| `OPENROUTER_RETRY_DELAY_MS` | no | default `300`; linear backoff base |
 | `OPENROUTER_SITE_URL` | no | public URL for OpenRouter headers |
 | `OPENROUTER_APP_NAME` | no | `SuSE` |
 

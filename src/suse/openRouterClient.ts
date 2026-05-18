@@ -1,4 +1,5 @@
 import type { AppConfig } from "../config.js";
+import { canRetryAttempt, retryDelayMs, shouldRetryHttpStatus, sleep } from "../utils/retry.js";
 
 export type OpenRouterCompletion = {
   reply: string;
@@ -23,49 +24,63 @@ export async function createOpenRouterChatReply({
     throw new Error("OPENROUTER_MODEL is required for OpenRouter runtime.");
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.openRouter.timeoutMs);
+  for (let attempt = 1; attempt <= config.openRouter.maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), config.openRouter.timeoutMs);
 
-  try {
-    const response = await fetchImpl(`${config.openRouter.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: openRouterHeaders(config),
-      body: JSON.stringify({
-        model: config.openRouter.model,
-        messages,
-        temperature: config.openRouter.temperature,
-        max_completion_tokens: config.openRouter.maxCompletionTokens,
-        stream: false
-      }),
-      signal: controller.signal
-    });
+    try {
+      const response = await fetchImpl(`${config.openRouter.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: openRouterHeaders(config),
+        body: JSON.stringify({
+          model: config.openRouter.model,
+          messages,
+          temperature: config.openRouter.temperature,
+          max_completion_tokens: config.openRouter.maxCompletionTokens,
+          stream: false
+        }),
+        signal: controller.signal
+      });
 
-    const rawBody = await response.text();
-    const body = parseJson(rawBody);
+      const rawBody = await response.text();
+      const body = parseJson(rawBody);
 
-    if (!response.ok) {
-      throw new Error(formatOpenRouterError(response.status, body, rawBody));
+      if (!response.ok) {
+        if (shouldRetryHttpStatus(response.status) && canRetryAttempt(attempt, config.openRouter)) {
+          await sleep(retryDelayMs(attempt, config.openRouter));
+          continue;
+        }
+
+        throw new Error(formatOpenRouterError(response.status, body, rawBody));
+      }
+
+      const reply = extractReplyText(body);
+      if (!reply) {
+        throw new Error("OpenRouter response did not include assistant text.");
+      }
+
+      return {
+        reply,
+        id: isRecord(body) && typeof body.id === "string" ? body.id : undefined,
+        model: isRecord(body) && typeof body.model === "string" ? body.model : config.openRouter.model,
+        usage: isRecord(body) ? body.usage : undefined
+      };
+    } catch (error) {
+      if (canRetryAttempt(attempt, config.openRouter)) {
+        await sleep(retryDelayMs(attempt, config.openRouter));
+        continue;
+      }
+
+      if (error instanceof Error && error.name === "AbortError") {
+        throw new Error(`OpenRouter request timed out after ${config.openRouter.timeoutMs}ms.`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const reply = extractReplyText(body);
-    if (!reply) {
-      throw new Error("OpenRouter response did not include assistant text.");
-    }
-
-    return {
-      reply,
-      id: isRecord(body) && typeof body.id === "string" ? body.id : undefined,
-      model: isRecord(body) && typeof body.model === "string" ? body.model : config.openRouter.model,
-      usage: isRecord(body) ? body.usage : undefined
-    };
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`OpenRouter request timed out after ${config.openRouter.timeoutMs}ms.`);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
   }
+
+  throw new Error("OpenRouter request failed.");
 }
 
 function openRouterHeaders(config: AppConfig): Record<string, string> {
