@@ -209,27 +209,16 @@ export function createApp({
   });
 
   app.get("/v1/models", async () => {
-    const models = [
-      {
-        id: "suse-stub",
-        object: "model",
-        created: nowSeconds(),
-        owned_by: "suse"
-      }
-    ];
-
-    if (config.openRouter.model) {
-      models.push({
-        id: config.openRouter.model,
-        object: "model",
-        created: nowSeconds(),
-        owned_by: "openrouter"
-      });
-    }
-
     return {
       object: "list",
-      data: models
+      data: [
+        {
+          id: SUSE_PROFILE.slug,
+          object: "model",
+          created: nowSeconds(),
+          owned_by: "suse"
+        }
+      ]
     };
   });
 

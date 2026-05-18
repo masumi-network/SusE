@@ -31,7 +31,7 @@ export async function createSuseReply({
     return {
       agent: SUSE_PROFILE.name,
       mode: directReply.mode,
-      model: directReply.model,
+      model: SUSE_PROFILE.slug,
       conversationId: conversationId || "",
       input: normalizedMessage,
       reply: ensurePublicReply(directReply.reply, createDirectFallbackReply(normalizedMessage)),
@@ -56,7 +56,7 @@ export async function createSuseReply({
   return {
     agent: SUSE_PROFILE.name,
     mode: synthesis.mode,
-    model: synthesis.model,
+    model: SUSE_PROFILE.slug,
     conversationId: conversationId || "",
     input: normalizedMessage,
     reply: ensurePublicReply(
