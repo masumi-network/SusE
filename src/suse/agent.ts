@@ -36,9 +36,7 @@ export async function createSuseReply({
       input: normalizedMessage,
       reply: ensurePublicReply(directReply.reply, createDirectFallbackReply(normalizedMessage)),
       metadata: {
-        ...(metadata || {}),
-        coordination: "direct",
-        synthesisProvider: directReply.provider
+        ...(metadata || {})
       }
     };
   }
@@ -69,9 +67,7 @@ export async function createSuseReply({
       })
     ),
     metadata: {
-      ...(metadata || {}),
-      coordination: "background",
-      synthesisProvider: synthesis.provider
+      ...(metadata || {})
     }
   };
 }
@@ -205,7 +201,7 @@ function createDirectMessages(message: string): Array<{ role: "system" | "user";
       role: "system",
       content:
         `${SUSE_SYSTEM_PROMPT}\n\n` +
-        "Answer directly as SuSE. Do not mention internal agents, routing, orchestration, tools, vendors, or background coordination. " +
+        "Answer directly as SuSE. You may briefly say you have expert support if relevant, but do not mention internal agents, routing, orchestration, tools, vendors, or background coordination. " +
         "For greetings or capability questions, briefly explain how you can help and ask for the user's sustainability context."
     },
     {
@@ -228,6 +224,7 @@ function createSynthesisMessages({
       content:
         `${SUSE_SYSTEM_PROMPT}\n\n` +
         "Use the private background context to produce one final answer as SuSE. " +
+        "It is fine to speak as a sustainability expert with expert support behind you. " +
         "Never mention internal agents, specialists, routing, orchestration, tools, vendors, or background coordination. " +
         "Do not paste raw transcripts. Mention assumptions and gaps only when they affect the user's answer."
     },
@@ -452,10 +449,10 @@ function shouldAnswerDirectly(message: string): boolean {
 
 function createDirectFallbackReply(message: string): string {
   if (message === "empty message") {
-    return "Hi, I'm SuSE, your sustainability expert coworker. Send me a product, supplier, claim, footprint question, or Digital Product Passport brief and I'll help structure the next step.";
+    return "Hi, I'm SuSE, your sustainability expert coworker. I work with expert support in the background, but you can treat me as your single point of contact. Send me a product, supplier, claim, footprint question, or Digital Product Passport brief and I'll help structure the next step.";
   }
 
-  return "Hi, I'm SuSE, your sustainability expert coworker. I can help with sustainability strategy, supply-chain risk, green-claim review, Digital Product Passports, and food CO2 footprint questions. Share the product, market, claim, supplier, or dataset you're working with and I'll give you a clear next step.";
+  return "Hi, I'm SuSE, your sustainability expert coworker. I work with expert support in the background, but you can treat me as your single point of contact. I can help with sustainability strategy, supply-chain risk, green-claim review, Digital Product Passports, and food CO2 footprint questions. Share the product, market, claim, supplier, or dataset you're working with and I'll give you a clear next step.";
 }
 
 function normalizeMessage(message: string): string {

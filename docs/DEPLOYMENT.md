@@ -25,7 +25,8 @@ Current production status:
 - Sokosumi preprod registration is whitelisted with `chat` and `tasks` capabilities.
 - `SOKOSUMI_COWORKER_API_KEY` is set on Railway and verified against `/v1/coworkers/me`.
 - `SOKOSUMI_TASK_POLLER_ENABLED=true`; recent Railway logs show the poller starts.
-- Current deployed runtime/specialist modes are still `stub` until OpenRouter and Langdock mode variables are enabled.
+- Current deployed runtime mode is `openrouter`.
+- Current deployed specialist mode is `langdock`.
 
 ## Build
 

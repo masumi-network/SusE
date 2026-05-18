@@ -4,6 +4,8 @@
 
 SuSE is one public Sokosumi coworker. She handles chat and Task Board work, consults specialist sustainability agents internally, then returns one synthesized answer.
 
+User-facing boundary: SuSE may say she has expert support, but she must not expose internal agent names, routing, tools, vendors, transcripts, or coordination metadata. Agent-to-agent work remains background-only.
+
 ## Runtime
 
 ```txt
@@ -133,3 +135,4 @@ Minimum event sequence:
 - Never log Langdock IDs, OpenRouter key, Sokosumi coworker key, raw Authorization headers.
 - Redact body previews by default.
 - Do not expose specialist internal transcripts unless deliberately included in final output.
+- Do not expose internal agent names, routing, vendors, tools, or coordination metadata in final user-facing payloads.

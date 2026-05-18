@@ -48,6 +48,10 @@ _Avoid_: chat-only coworker
 The OpenRouter-backed LLM call where SuSE turns specialist findings and her own reasoning into the final user-facing answer.
 _Avoid_: raw specialist transcript dump
 
+**Background-Only Collaboration**:
+SuSE's internal agent-to-agent process stays private. The user may hear that SuSE has expert support, but never sees internal agent names, routing steps, tools, vendors, or coordination details.
+_Avoid_: "I routed this through Lexi", "the specialist said", internal transcript summaries
+
 **Standalone Service**:
 SuSE's own Railway-hosted implementation that uses Nori only as a protocol reference.
 _Avoid_: Nori fork, copied Nori codebase
@@ -97,6 +101,7 @@ _Avoid_: general emissions analyst
 - **Selective Orchestration** precedes SuSE's final synthesized answer
 - The **Thinking Layer** owns specialist selection, coordination, and final synthesis
 - The **Synthesis Call** produces SuSE's final user-facing answer
+- **Background-Only Collaboration** constrains every final answer and response payload
 - **Lexi**, **Emil-Conrad**, **Diddy P.**, and **Food CO2 Analyst** are **Specialist Coworkers**
 
 ## Example Dialogue
@@ -116,3 +121,4 @@ _Avoid_: general emissions analyst
 - "Depend on pi-sokosumi" was narrowed; resolved: use pi-sokosumi as reference/source and keep SuSE's production code self-contained.
 - "Chat only" was rejected; resolved: SuSE v1 includes **Task Board Processing**.
 - "LLM provider" was resolved: SuSE uses OpenRouter for the **Synthesis Call**.
+- "Should SuSE disclose routing?" was resolved: no. SuSE may say she has expert support, but final answers and response metadata must not expose agent-to-agent routing, internal agent names, tools, vendors, or coordination steps.

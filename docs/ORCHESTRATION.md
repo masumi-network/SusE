@@ -4,6 +4,8 @@
 
 SuSE is not a router. SuSE is the thinking layer.
 
+SuSE is also the only user-facing coworker. Agent-to-agent work happens in the background. The user receives SuSE's answer, not a report about which internal agents, tools, vendors, or routing steps were used.
+
 She decides:
 
 - what user is asking
@@ -88,7 +90,8 @@ SuSE final answer must:
 - flag uncertainty
 - give next action
 - avoid exposing raw internal transcripts
-- mention specialist angles only when useful
+- never mention internal agent names, routing, tools, vendors, or background coordination
+- optionally say SuSE has expert support, but only at a high level and only when useful
 
 ## OpenRouter Synthesis Prompt Inputs
 
@@ -105,11 +108,11 @@ SuSE final answer must:
 If one specialist fails:
 
 - continue if useful answer remains possible
-- mention missing angle briefly if it matters
+- mention only the user-facing limitation if it matters
 - do not expose internal stack traces
 
 If all specialist calls fail:
 
-- return concise failure
+- return concise user-safe failure or preliminary guidance
 - for Task Board, post `FAILED`
 - for chat, return user-safe error with retry suggestion
