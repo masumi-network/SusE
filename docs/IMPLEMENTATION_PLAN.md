@@ -24,12 +24,14 @@ Status: complete. Live production Responses endpoint verified after Sokosumi pre
 - SSE support for `stream: true`.
 - Completed response persistence.
 - Conversation item persistence.
+- Delegated credit check and usage charge for successful chat/Responses calls when enabled.
 
 Acceptance:
 
 - Sokosumi can create conversation.
 - Sokosumi can send streamed chat.
 - `GET /v1/responses/:id` returns completed response.
+- Usage charge posts to `/v1/coworkers/me/usage` with run id idempotency and response id reference.
 
 ## Phase 2 - SuSE Core
 
@@ -57,6 +59,7 @@ Status: complete. Poller starts in production with verified coworker API key, re
 - Claim with `RUNNING`.
 - Process through SuSE core.
 - Post `COMPLETED` or `FAILED`.
+- Attach positive configured credits to `COMPLETED` task events.
 - Skip already-progressed tasks after restart.
 - Store task event/run claims in Postgres for cross-restart idempotency.
 
@@ -65,6 +68,7 @@ Acceptance:
 - Ready task processed once.
 - Duplicate poll/restart does not double-complete.
 - Stale claimed/running events can be reclaimed after lease expiry.
+- Task completion charges configured positive credits.
 
 ## Phase 4 - Production Hardening
 
@@ -99,4 +103,5 @@ Acceptance:
 
 - Sokosumi preprod `/coworkers/me` returns SuSE.
 - Production `/v1/responses` returns completed chat response.
-- Task Board poller starts; real task event smoke test still pending.
+- Task Board poller starts.
+- Real Task Board task completes in preprod without leaking internal process details.

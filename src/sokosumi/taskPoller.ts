@@ -1,5 +1,5 @@
 import type { TaskRunStore } from "../storage/types.js";
-import type { SokosumiClient, SokosumiEvent, SokosumiTask, SokosumiTaskEventInput } from "./types.js";
+import type { SokosumiTaskClient, SokosumiEvent, SokosumiTask, SokosumiTaskEventInput } from "./types.js";
 
 export type SokosumiTaskPoller = {
   start(): void;
@@ -21,7 +21,7 @@ export function createSokosumiTaskPoller({
   leaseMs,
   leaseOwner = `suse-${process.pid}`
 }: {
-  client: SokosumiClient;
+  client: SokosumiTaskClient;
   intervalMs: number;
   limit: number;
   maxPages: number;

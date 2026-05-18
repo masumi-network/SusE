@@ -9,3 +9,4 @@ Architecture Decision Records for the SuSE coworker.
 - [0005: Durable Task Run Ledger](0005-durable-task-run-ledger.md)
 - [0006: Runtime Budgets And Run Logs](0006-runtime-budgets-and-run-logs.md)
 - [0007: Orchestration Run Module](0007-orchestration-run-module.md)
+- [0008: Sokosumi Usage Charging](0008-sokosumi-usage-charging.md)

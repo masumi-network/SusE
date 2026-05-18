@@ -185,6 +185,110 @@ test("plain chat endpoint does not expose internal run fields", async () => {
   await store.close();
 });
 
+test("responses route charges Sokosumi usage when user context is present", async () => {
+  const config = loadConfig({
+    PORT: "3000",
+    SUSE_STORAGE: "memory",
+    SOKOSUMI_COWORKER_API_KEY: "coworker-token",
+    SOKOSUMI_USAGE_CHARGING_ENABLED: "true",
+    SOKOSUMI_CONVERSATION_CREDITS: "0.25"
+  });
+  const store = createMemoryStore();
+  const app = createApp({ config, store });
+  const calls: Array<{ url: string; method: string; headers: Record<string, string>; body?: unknown }> = [];
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url, init) => {
+    const headers = new Headers(init?.headers);
+    calls.push({
+      url: String(url),
+      method: init?.method || "GET",
+      headers: Object.fromEntries(headers.entries()),
+      body: init?.body ? JSON.parse(String(init.body)) : undefined
+    });
+
+    if (String(url).includes("/credits")) {
+      return jsonResponse({ data: { credits: { total: 10 } } });
+    }
+    return jsonResponse({ data: { id: "usage_1" } }, 201);
+  };
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/responses",
+      headers: {
+        "x-sokosumi-user-id": "user-123",
+        "x-sokosumi-organization-id": "org-456"
+      },
+      payload: {
+        input: "Review this sustainability claim."
+      }
+    });
+
+    assert.equal(response.statusCode, 200);
+    const body = response.json();
+    assert.equal(body.metadata.usage, undefined);
+    assert.equal(body.metadata.billing, undefined);
+    assert.equal(calls.length, 2);
+    assert.match(calls[0]?.url || "", /\/v1\/users\/user-123\/organizations\/org-456\/credits$/);
+    assert.equal(calls[0]?.headers["x-delegation-user-id"], "user-123");
+    assert.equal(calls[0]?.headers["x-delegation-organization-id"], "org-456");
+    assert.match(calls[1]?.url || "", /\/v1\/coworkers\/me\/usage$/);
+    const usageBody = calls[1]?.body as Record<string, unknown>;
+    assert.equal(usageBody.credits, 0.25);
+    assert.match(String(usageBody.idempotencyKey), /^run_/);
+    assert.equal(usageBody.referenceId, body.id);
+    assert.equal(usageBody.organizationId, "org-456");
+    assert.equal(usageBody.userId, "user-123");
+  } finally {
+    globalThis.fetch = originalFetch;
+    await app.close();
+    await store.close();
+  }
+});
+
+test("usage charging fails open when Sokosumi balance is insufficient", async () => {
+  const config = loadConfig({
+    PORT: "3000",
+    SUSE_STORAGE: "memory",
+    SOKOSUMI_COWORKER_API_KEY: "coworker-token",
+    SOKOSUMI_USAGE_CHARGING_ENABLED: "true",
+    SOKOSUMI_CONVERSATION_CREDITS: "5"
+  });
+  const store = createMemoryStore();
+  const app = createApp({ config, store });
+  const calls: Array<{ url: string; method: string }> = [];
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), method: init?.method || "GET" });
+    return jsonResponse({ data: { credits: { total: 1 } } });
+  };
+
+  try {
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/responses",
+      headers: {
+        "x-sokosumi-user-id": "user-123"
+      },
+      payload: {
+        input: "Review this sustainability claim."
+      }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().status, "completed");
+    assert.equal(calls.length, 1);
+    assert.match(calls[0]?.url || "", /\/credits$/);
+  } finally {
+    globalThis.fetch = originalFetch;
+    await app.close();
+    await store.close();
+  }
+});
+
 test("fallback does not echo adversarial request keys", async () => {
   const config = loadConfig({ PORT: "3000", SUSE_STORAGE: "memory" });
   const store = createMemoryStore();
@@ -208,6 +312,13 @@ test("fallback does not echo adversarial request keys", async () => {
   await app.close();
   await store.close();
 });
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" }
+  });
+}
 
 test("responses route supports SSE streaming", async () => {
   const config = loadConfig({ PORT: "3000", SUSE_STORAGE: "memory" });

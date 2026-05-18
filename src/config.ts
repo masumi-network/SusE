@@ -46,6 +46,8 @@ export type AppConfig = {
   sokosumi: {
     apiUrl: string;
     coworkerApiKey: string;
+    usageChargingEnabled: boolean;
+    conversationCredits: number;
     taskPollerEnabled: boolean;
     taskPollIntervalMs: number;
     taskPollLimit: number;
@@ -101,6 +103,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     sokosumi: {
       apiUrl: stripTrailingSlash(env.SOKOSUMI_API_URL || "https://api.preprod.sokosumi.com"),
       coworkerApiKey: env.SOKOSUMI_COWORKER_API_KEY || "",
+      usageChargingEnabled: env.SOKOSUMI_USAGE_CHARGING_ENABLED === "true",
+      conversationCredits: parseNumber(env.SOKOSUMI_CONVERSATION_CREDITS, 0.1),
       taskPollerEnabled: env.SOKOSUMI_TASK_POLLER_ENABLED === "true",
       taskPollIntervalMs: parsePositiveInteger(env.SOKOSUMI_TASK_POLL_INTERVAL_MS, 15000),
       taskPollLimit: parsePositiveInteger(env.SOKOSUMI_TASK_POLL_LIMIT, 20),
@@ -129,7 +133,7 @@ export function listMissingRequiredConfig(config: AppConfig): string[] {
     }
   }
 
-  if (config.sokosumi.taskPollerEnabled && !config.sokosumi.coworkerApiKey) {
+  if ((config.sokosumi.taskPollerEnabled || config.sokosumi.usageChargingEnabled) && !config.sokosumi.coworkerApiKey) {
     missing.push("SOKOSUMI_COWORKER_API_KEY");
   }
 

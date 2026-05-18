@@ -22,12 +22,14 @@ No secrets in git. Set these in Railway.
 | Var | Required | Purpose |
 | --- | --- | --- |
 | `SOKOSUMI_API_URL` | yes | `https://api.preprod.sokosumi.com` or prod URL |
-| `SOKOSUMI_COWORKER_API_KEY` | yes for tasks | Coworker API key for polling/events |
+| `SOKOSUMI_COWORKER_API_KEY` | yes for tasks/usage charging | Coworker API key for polling, events, delegated credit checks, and usage charging |
+| `SOKOSUMI_USAGE_CHARGING_ENABLED` | yes for paid chat | `true` to charge Sokosumi credits for successful chat/Responses calls |
+| `SOKOSUMI_CONVERSATION_CREDITS` | no | default `0.1`; credits charged per successful chat/Responses call |
 | `SOKOSUMI_TASK_POLLER_ENABLED` | yes | `true` to process Task Board |
 | `SOKOSUMI_TASK_POLL_INTERVAL_MS` | no | default `15000` |
 | `SOKOSUMI_TASK_POLL_LIMIT` | no | default `20` |
 | `SOKOSUMI_TASK_POLL_MAX_PAGES` | no | default `10` |
-| `SOKOSUMI_TASK_COMPLETION_CREDITS` | no | default `0.1` |
+| `SOKOSUMI_TASK_COMPLETION_CREDITS` | no | default `0.1`; positive credits are attached to `COMPLETED` task events |
 
 ## Langdock
 

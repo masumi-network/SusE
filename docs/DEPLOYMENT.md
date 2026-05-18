@@ -24,6 +24,7 @@ Current production status:
 - `GET /health` reports `storageMode: "postgres"`.
 - Sokosumi preprod registration is whitelisted with `chat` and `tasks` capabilities.
 - `SOKOSUMI_COWORKER_API_KEY` is set on Railway and verified against `/v1/coworkers/me`.
+- `SOKOSUMI_USAGE_CHARGING_ENABLED=true` charges successful Sokosumi chat/Responses calls through `/v1/coworkers/me/usage`.
 - `SOKOSUMI_TASK_POLLER_ENABLED=true`; recent Railway logs show the poller starts.
 - Current deployed runtime mode is `openrouter`.
 - Current deployed specialist mode is `langdock`.
@@ -65,7 +66,10 @@ LANGDOCK_AGENT_ID_DIDDY_P=<secret>
 LANGDOCK_AGENT_ID_FOOD_CO2_ANALYST=<secret>
 SOKOSUMI_API_URL=<preprod-or-prod-url>
 SOKOSUMI_COWORKER_API_KEY=<secret>
+SOKOSUMI_USAGE_CHARGING_ENABLED=true
+SOKOSUMI_CONVERSATION_CREDITS=0.1
 SOKOSUMI_TASK_POLLER_ENABLED=true
+SOKOSUMI_TASK_COMPLETION_CREDITS=0.1
 ```
 
 See [ENVIRONMENT.md](./ENVIRONMENT.md) for optional retry, timeout, and polling knobs.

@@ -30,6 +30,29 @@ POST /v1/responses
 GET /v1/responses/:responseId
 ```
 
+5. When `SOKOSUMI_USAGE_CHARGING_ENABLED=true` and Sokosumi user context headers are present, SuSE checks delegated credits and charges successful conversational usage:
+
+```http
+GET /v1/users/:userId/organizations/:organizationId/credits
+Authorization: Bearer <SOKOSUMI_COWORKER_API_KEY>
+X-Delegation-User-Id: <userId>
+X-Delegation-Organization-Id: <organizationId>
+```
+
+```http
+POST /v1/coworkers/me/usage
+Authorization: Bearer <SOKOSUMI_COWORKER_API_KEY>
+{
+  "idempotencyKey": "<run id>",
+  "credits": 0.1,
+  "referenceId": "<response id>",
+  "organizationId": "<organization id>",
+  "userId": "<user id>"
+}
+```
+
+If credits are insufficient or the charging API fails, SuSE returns the completed answer and logs the charge outcome. The billing path is not exposed in the user-visible response.
+
 ## Conversation Endpoints
 
 Support minimal OpenAI Conversations-compatible shape:
@@ -89,6 +112,8 @@ POST /v1/tasks/:taskId/events
   "credits": 0.1
 }
 ```
+
+`credits` is omitted when configured as `0` because Sokosumi rejects non-positive task-event credits.
 
 5. Or fail:
 

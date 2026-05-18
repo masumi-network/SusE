@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createSokosumiTaskPoller, hasTaskProgress } from "../src/sokosumi/taskPoller.js";
 import { createMemoryStore } from "../src/storage/memoryStore.js";
-import type { SokosumiClient, SokosumiTaskEventInput } from "../src/sokosumi/types.js";
+import type { SokosumiTaskClient, SokosumiTaskEventInput } from "../src/sokosumi/types.js";
 
 const silentLogger = {
   log() {},
@@ -11,7 +11,7 @@ const silentLogger = {
 
 test("task poller claims and completes ready task", async () => {
   const createdEvents: Array<{ taskId: string; body: SokosumiTaskEventInput }> = [];
-  const client: SokosumiClient = {
+  const client: SokosumiTaskClient = {
     async listCoworkerEvents() {
       return {
         events: [{ id: "evt_1", taskId: "task_1", status: "READY" }]
@@ -61,7 +61,7 @@ test("task poller claims and completes ready task", async () => {
 test("task poller skips task with coworker progress after trigger event", async () => {
   let processed = false;
   const createdEvents: Array<{ taskId: string; body: SokosumiTaskEventInput }> = [];
-  const client: SokosumiClient = {
+  const client: SokosumiTaskClient = {
     async listCoworkerEvents() {
       return {
         events: [{ id: "evt_1", taskId: "task_1", status: "READY" }]
@@ -111,7 +111,7 @@ test("task poller ledger skips duplicate event across poller instances", async (
   const store = createMemoryStore();
   let processCount = 0;
   const createdEvents: Array<{ taskId: string; body: SokosumiTaskEventInput }> = [];
-  const client: SokosumiClient = {
+  const client: SokosumiTaskClient = {
     async listCoworkerEvents() {
       return {
         events: [{ id: "evt_ledger", taskId: "task_ledger", status: "READY" }]
@@ -177,7 +177,7 @@ test("task poller ledger reclaims stale running event", async () => {
 
   let processCount = 0;
   const createdEvents: Array<{ taskId: string; body: SokosumiTaskEventInput }> = [];
-  const client: SokosumiClient = {
+  const client: SokosumiTaskClient = {
     async listCoworkerEvents() {
       return {
         events: [{ id: "evt_stale", taskId: "task_stale", status: "READY" }]

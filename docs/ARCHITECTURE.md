@@ -14,6 +14,7 @@ Sokosumi chat/task UI
   -> Railway Postgres for durable state
   -> Langdock API for specialist calls
   -> OpenRouter for SuSE synthesis
+  -> Sokosumi usage charging
   -> Sokosumi response stream or task event
 ```
 
@@ -39,6 +40,11 @@ Task Board work is not only inbound HTTP. SuSE also authenticates as a coworker 
 - `GET /v1/tasks/:taskId`
 - `POST /v1/tasks/:taskId/events`
 
+When usage charging is enabled, successful conversational calls also use:
+
+- `GET /v1/users/:userId[/organizations/:organizationId]/credits`
+- `POST /v1/coworkers/me/usage`
+
 ## Main Modules
 
 ### Coworker Surface
@@ -58,6 +64,12 @@ Depth target: HTTP handlers never manipulate SQL directly.
 Poller module adapted from `pi-sokosumi`. It finds ready task events, posts `RUNNING`, sends task content through SuSE orchestration, then posts `COMPLETED` or `FAILED`.
 
 Depth target: SuSE task behavior is callback-driven; generic polling stays separate.
+
+### Sokosumi Billing Adapter
+
+Adapter around delegated credit checks and `/v1/coworkers/me/usage`. It charges fixed per-conversation credits after successful chat/Responses runs and omits non-positive task-event credits.
+
+Depth target: billing failure never exposes internal process details to users and does not corrupt completed response persistence.
 
 ### Specialist Router
 

@@ -30,7 +30,7 @@ export type SokosumiTaskEventInput = {
   credits?: number;
 };
 
-export type SokosumiClient = {
+export type SokosumiTaskClient = {
   listCoworkerEvents(input?: { limit?: number; cursor?: string }): Promise<{
     events: SokosumiEvent[];
     pagination?: {
@@ -41,3 +41,17 @@ export type SokosumiClient = {
   createTaskEvent(taskId: string, body: SokosumiTaskEventInput): Promise<unknown>;
 };
 
+export type SokosumiUsageInput = {
+  credits: number;
+  idempotencyKey: string;
+  referenceId?: string;
+  organizationId?: string;
+  userId: string;
+};
+
+export type SokosumiUsageClient = {
+  getDelegatedCredits(input: { userId: string; organizationId?: string }): Promise<number>;
+  postUsage(input: SokosumiUsageInput): Promise<unknown>;
+};
+
+export type SokosumiClient = SokosumiTaskClient & SokosumiUsageClient;

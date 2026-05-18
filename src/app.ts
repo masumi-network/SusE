@@ -4,6 +4,7 @@ import { listMissingRequiredConfig } from "./config.js";
 import { extractMessageFromChatMessages, extractMessageFromResponsesInput } from "./http/input.js";
 import { toChatCompletionsResult, toResponsesApiResult, toResponsesStreamEvents } from "./http/responses.js";
 import { sendSse } from "./http/sse.js";
+import { chargeSokosumiConversationUsage, type SokosumiUsageChargeResult } from "./sokosumi/usage.js";
 import { normalizeConversationId, toAssistantConversationItem, toConversationInputItems } from "./storage/normalize.js";
 import type { ConversationStore } from "./storage/types.js";
 import { createSuseReply, type SuseReply } from "./suse/agent.js";
@@ -108,6 +109,13 @@ export function createApp({
       config
     });
     logSuseRun(request.log, result, "chat");
+    await chargeUsageForRequest({
+      logger: request.log,
+      config,
+      result,
+      protocol: "chat",
+      headers: request.headers
+    });
     return toPublicSuseReply(result);
   });
 
@@ -181,6 +189,14 @@ export function createApp({
     if (conversationId) {
       await store.appendConversationItems(conversationId, [toAssistantConversationItem(responseResult.output_text)]);
     }
+    await chargeUsageForRequest({
+      logger: request.log,
+      config,
+      result,
+      protocol: "responses",
+      referenceId: responseResult.id,
+      headers: request.headers
+    });
 
     if (body.stream === true) {
       sendSse(reply, toResponsesStreamEvents(responseResult));
@@ -209,7 +225,16 @@ export function createApp({
       config
     });
     logSuseRun(request.log, result, "chat_completions");
-    return toChatCompletionsResult(result);
+    const responseResult = toChatCompletionsResult(result);
+    await chargeUsageForRequest({
+      logger: request.log,
+      config,
+      result,
+      protocol: "chat_completions",
+      referenceId: stringValue(responseResult.id),
+      headers: request.headers
+    });
+    return responseResult;
   });
 
   app.get("/v1/models", async () => {
@@ -261,6 +286,59 @@ function logSuseRun(logger: { info: (obj: Record<string, unknown>, msg?: string)
   );
 }
 
+async function chargeUsageForRequest({
+  logger,
+  config,
+  result,
+  protocol,
+  referenceId,
+  headers
+}: {
+  logger: { info: (obj: Record<string, unknown>, msg?: string) => void; error: (obj: Record<string, unknown>, msg?: string) => void };
+  config: AppConfig;
+  result: SuseReply;
+  protocol: string;
+  referenceId?: string;
+  headers: Record<string, string | string[] | undefined>;
+}): Promise<void> {
+  const charge = await chargeSokosumiConversationUsage({
+    config,
+    protocol,
+    runId: result.internal.runId,
+    referenceId,
+    userId: getSokosumiUserId(headers),
+    organizationId: getSokosumiOrganizationId(headers)
+  });
+
+  logUsageCharge(logger, charge, result, protocol);
+}
+
+function logUsageCharge(
+  logger: { info: (obj: Record<string, unknown>, msg?: string) => void; error: (obj: Record<string, unknown>, msg?: string) => void },
+  charge: SokosumiUsageChargeResult,
+  result: SuseReply,
+  protocol: string
+): void {
+  if (!charge.attempted && charge.reason === "disabled") return;
+
+  const entry = {
+    event: charge.charged ? "sokosumi_usage_charged" : "sokosumi_usage_not_charged",
+    protocol,
+    runId: result.internal.runId,
+    correlationId: result.internal.correlationId,
+    credits: charge.credits,
+    balance: charge.balance,
+    reason: charge.reason,
+    error: charge.error
+  };
+
+  if (charge.attempted && !charge.charged && charge.reason !== "insufficient_credits") {
+    logger.error(entry, "sokosumi_usage_not_charged");
+    return;
+  }
+  logger.info(entry, entry.event);
+}
+
 function toPublicSuseReply(result: SuseReply): Omit<SuseReply, "internal"> {
   const { internal: _internal, ...publicResult } = result;
   return publicResult;
@@ -291,4 +369,16 @@ function stringValue(value: unknown): string {
 function headerValue(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) return value[0];
   return value;
+}
+
+function getSokosumiUserId(headers: Record<string, string | string[] | undefined>): string | undefined {
+  return headerValue(headers["x-sokosumi-user-id"]) || headerValue(headers["x-delegation-user-id"]);
+}
+
+function getSokosumiOrganizationId(headers: Record<string, string | string[] | undefined>): string | undefined {
+  return (
+    headerValue(headers["x-sokosumi-organization-id"]) ||
+    headerValue(headers["x-organization-id"]) ||
+    headerValue(headers["x-delegation-organization-id"])
+  );
 }
