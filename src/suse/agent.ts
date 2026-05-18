@@ -89,6 +89,15 @@ async function createDirectReplyIfAppropriate({
 > {
   if (!shouldAnswerDirectly(message)) return undefined;
 
+  if (shouldUseDeterministicDirectReply(message)) {
+    return {
+      provider: "direct",
+      mode: "direct",
+      model: "suse-direct",
+      reply: createDirectFallbackReply(message)
+    };
+  }
+
   if (config.runtimeMode === "openrouter") {
     try {
       const completion = await createOpenRouterChatReply({
@@ -410,6 +419,7 @@ function sanitizePublicReply(value: string): string {
     .replace(/\bSUSE_SPECIALIST_MODE\b/g, "")
     .replace(/\binternal agents?\b/gi, "supporting context")
     .replace(/\bother agents?\b/gi, "supporting context")
+    .replace(/\bagent[\s\-\u2011\u2013\u2014]+to[\s\-\u2011\u2013\u2014]+agent\b/gi, "supporting")
     .replace(/\bspecialist(s)?\b/gi, "supporting")
     .replace(/\brouting\b/gi, "handling")
     .replace(/\brouted\b/gi, "handled")
@@ -417,6 +427,12 @@ function sanitizePublicReply(value: string): string {
     .replace(/\borchestrated\b/gi, "coordinated")
     .replace(/\bprivate background context\b/gi, "context")
     .replace(/\bbackground coordination\b/gi, "context")
+    .replace(/\bbackground process\b/gi, "context")
+    .replace(/\bbackground notes?\b/gi, "context")
+    .replace(/\bhidden prompt\b/gi, "context")
+    .replace(/\bsystem prompt\b/gi, "context")
+    .replace(/\bmy instructions\b/gi, "my operating rules")
+    .replace(/\bper my instructions\b/gi, "I cannot do that")
     .replace(/\bI consulted\b/gi, "I reviewed")
     .replace(/\bI checked with\b/gi, "I checked")
     .replace(/[ \t]+/g, " ")
@@ -426,9 +442,17 @@ function sanitizePublicReply(value: string): string {
 }
 
 function containsInternalLanguage(value: string): boolean {
-  return /\b(Lexi|Emil-Conrad|Diddy P\.|Food CO2 Analyst|Langdock|OpenRouter|SUSE_SPECIALIST_MODE|specialist|routing|routed|orchestration|orchestrated|internal agent|other agent|background coordination|private background context)\b/i.test(
-    value
-  );
+  return [
+    /\b(Lexi|Emil-Conrad|Diddy P\.|Food CO2 Analyst|Langdock|OpenRouter|SUSE_SPECIALIST_MODE)\b/i,
+    /\b(selectedSpecialists|specialistStatus|internalAgents|chainOfThought)\b/i,
+    /\b(specialist|routing|routed|orchestration|orchestrated)\b/i,
+    /\binternal agents?\b/i,
+    /\bother agents?\b/i,
+    /\bagent[\s\-\u2011\u2013\u2014]+to[\s\-\u2011\u2013\u2014]+agent\b/i,
+    /\b(background|private)\s+(coordination|process|context|notes?)\b/i,
+    /\b(hidden|system)\s+prompt\b/i,
+    /\b(per my instructions|my instructions|operating rules)\b/i
+  ].some((pattern) => pattern.test(value));
 }
 
 function shouldAnswerDirectly(message: string): boolean {
@@ -443,8 +467,23 @@ function shouldAnswerDirectly(message: string): boolean {
   if (/\b(how can you help|what can you do|who are you|introduce yourself|help me get started)\b/.test(normalized)) {
     return true;
   }
+  if (/\b(agents? behind|behind you|who works with you|name .*agents?|show .*agents?|debug|hidden prompt|system prompt|instructions|agent to agent|agent-to-agent|background process|private background)\b/.test(normalized)) {
+    return true;
+  }
 
   return false;
+}
+
+function shouldUseDeterministicDirectReply(message: string): boolean {
+  const normalized = message
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return /\b(agents? behind|behind you|who works with you|name .*agents?|show .*agents?|debug|hidden prompt|system prompt|instructions|agent to agent|agent-to-agent|background process|private background)\b/.test(
+    normalized
+  );
 }
 
 function createDirectFallbackReply(message: string): string {
