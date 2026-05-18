@@ -34,12 +34,10 @@ export async function createSuseReply({
       model: directReply.model,
       conversationId: conversationId || "",
       input: normalizedMessage,
-      reply: directReply.reply,
+      reply: ensurePublicReply(directReply.reply, createDirectFallbackReply(normalizedMessage)),
       metadata: {
         ...(metadata || {}),
-        route: "direct",
-        selectedSpecialists: [],
-        specialistStatus: [],
+        coordination: "direct",
         synthesisProvider: directReply.provider
       }
     };
@@ -63,15 +61,16 @@ export async function createSuseReply({
     model: synthesis.model,
     conversationId: conversationId || "",
     input: normalizedMessage,
-    reply: synthesis.reply,
+    reply: ensurePublicReply(
+      synthesis.reply,
+      createFallbackSynthesis({
+        message: normalizedMessage,
+        findings
+      })
+    ),
     metadata: {
       ...(metadata || {}),
-      selectedSpecialists: selectedSpecialists.map((specialist) => specialist.slug),
-      specialistStatus: findings.map((finding) => ({
-        specialist: finding.specialist.slug,
-        status: finding.status,
-        error: finding.error
-      })),
+      coordination: "background",
       synthesisProvider: synthesis.provider
     }
   };
@@ -206,7 +205,7 @@ function createDirectMessages(message: string): Array<{ role: "system" | "user";
       role: "system",
       content:
         `${SUSE_SYSTEM_PROMPT}\n\n` +
-        "Answer directly as SuSE. Do not consult or mention internal specialists. " +
+        "Answer directly as SuSE. Do not mention internal agents, routing, orchestration, tools, vendors, or background coordination. " +
         "For greetings or capability questions, briefly explain how you can help and ask for the user's sustainability context."
     },
     {
@@ -228,15 +227,16 @@ function createSynthesisMessages({
       role: "system",
       content:
         `${SUSE_SYSTEM_PROMPT}\n\n` +
-        "Use the specialist findings as private working context. Produce one final answer. " +
-        "Do not paste raw transcripts. Mention assumptions and gaps only when they affect the answer."
+        "Use the private background context to produce one final answer as SuSE. " +
+        "Never mention internal agents, specialists, routing, orchestration, tools, vendors, or background coordination. " +
+        "Do not paste raw transcripts. Mention assumptions and gaps only when they affect the user's answer."
     },
     {
       role: "user",
       content:
         `User request:\n${message}\n\n` +
-        `Specialist findings:\n${formatFindingsForPrompt(findings)}\n\n` +
-        "Return the best possible answer for the user."
+        `Private background context:\n${formatFindingsForPrompt(findings)}\n\n` +
+        "Return the best possible answer for the user. Keep all background coordination private."
     }
   ];
 }
@@ -277,10 +277,23 @@ function createStubSpecialistFinding({
   specialist: Specialist;
 }): string {
   return [
-    `${specialist.name} would review the request through ${specialist.focus}.`,
+    createStubGuidanceForSpecialist(specialist),
     `Request: ${message}`,
-    "Live specialist execution is disabled because SUSE_SPECIALIST_MODE is not set to langdock."
+    "State assumptions clearly and ask for missing product, market, supplier, claim, or footprint data when needed."
   ].join("\n");
+}
+
+function createStubGuidanceForSpecialist(specialist: Specialist): string {
+  switch (specialist.slug) {
+    case "lexi":
+      return "Map the product, supplier, material, and traceability risks. Prioritize high-impact or high-uncertainty supply-chain areas.";
+    case "emil-conrad":
+      return "Check that sustainability claims are specific, substantiated, current, and not broader than the evidence supports.";
+    case "diddy-p":
+      return "Identify Digital Product Passport obligations, required data fields, data carriers, and ownership of product data.";
+    case "food-co2-analyst":
+      return "Collect ingredient weights, sourcing assumptions, emission factors, and packaging/transport data before calculating CO2e.";
+  }
 }
 
 function createFallbackSynthesis({
@@ -294,34 +307,67 @@ function createFallbackSynthesis({
 }): string {
   const completed = findings.filter((finding) => finding.status === "completed");
   const failed = findings.filter((finding) => finding.status === "failed");
-  const consulted = findings.map((finding) => finding.specialist.name).join(", ");
   const completedFindings = completed
-    .map((finding) => `- ${finding.specialist.name}: ${trimForReply(finding.content)}`)
+    .map((finding) => sanitizeFindingForReply(finding.content))
+    .filter(Boolean)
+    .map((finding) => `- ${finding}`)
     .join("\n");
-  const failures = failed.map((finding) => `- ${finding.specialist.name}: ${finding.error}`).join("\n");
 
   return [
-    `I routed this through: ${consulted}.`,
+    "Here is the best sustainability read based on the details available.",
     "",
     `Request:\n${message}`,
     "",
-    completedFindings ? `Specialist findings:\n${completedFindings}` : "No specialist completed successfully.",
-    failures ? `\nUnavailable specialist context:\n${failures}` : "",
-    failureReason ? `\nSynthesis fallback reason: ${failureReason}` : "",
+    completedFindings || createGenericFallbackGuidance(message),
+    failed.length > 0 || failureReason ? "\nSome supporting context was unavailable, so treat this as a preliminary answer." : "",
     "",
-    "Next step: provide the missing business/product details if you want a more specific sustainability recommendation."
+    "Next step: share product/category, market, suppliers/materials, claim wording, and any footprint data for a sharper recommendation."
   ]
     .filter(Boolean)
     .join("\n");
 }
 
+function createGenericFallbackGuidance(message: string): string {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("claim") || normalized.includes("greenwashing") || normalized.includes("marketing")) {
+    return [
+      "- Make the claim specific and bounded: say what improved, against what baseline, and over what period.",
+      "- Keep evidence close to the claim: lifecycle data, certifications, test reports, and methodology should be available before publication.",
+      "- Avoid absolute wording unless you can substantiate the full product, lifecycle, and market context."
+    ].join("\n");
+  }
+
+  if (normalized.includes("co2") || normalized.includes("carbon") || normalized.includes("footprint")) {
+    return [
+      "- Define the calculation boundary first: ingredients/materials, manufacturing, packaging, transport, use phase, and end of life.",
+      "- Use source-specific activity data where possible, then document emission factors and uncertainty.",
+      "- Report assumptions separately from measured values so the result can be improved later."
+    ].join("\n");
+  }
+
+  if (normalized.includes("passport") || normalized.includes("dpp")) {
+    return [
+      "- Start with the product category and target market to identify which Digital Product Passport rules apply.",
+      "- Map required product data, responsible owners, update frequency, and the data carrier users will scan.",
+      "- Separate mandatory compliance fields from optional sustainability storytelling."
+    ].join("\n");
+  }
+
+  return [
+    "- Clarify the product, market, and decision you need to make.",
+    "- Identify the sustainability risk area: supply chain, claims, product data, footprint, or reporting.",
+    "- Collect the evidence behind the decision, then turn it into a concrete recommendation or action plan."
+  ].join("\n");
+}
+
 function formatFindingsForPrompt(findings: LangdockFinding[]): string {
   return findings
-    .map((finding) => {
+    .map((finding, index) => {
       if (finding.status === "failed") {
-        return `## ${finding.specialist.name}\nStatus: failed\nError: ${finding.error}`;
+        return `## Background note ${index + 1}\nStatus: unavailable`;
       }
-      return `## ${finding.specialist.name}\nStatus: completed\n${finding.content}`;
+      return `## Background note ${index + 1}\nStatus: completed\n${finding.content}`;
     })
     .join("\n\n");
 }
@@ -330,6 +376,62 @@ function trimForReply(value: string): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   if (normalized.length <= 700) return normalized;
   return `${normalized.slice(0, 697)}...`;
+}
+
+function sanitizeFindingForReply(value: string): string {
+  return trimForReply(value)
+    .replace(/\bLexi\b/g, "")
+    .replace(/\bEmil-Conrad\b/g, "")
+    .replace(/\bDiddy P\.\b/g, "")
+    .replace(/\bFood CO2 Analyst\b/g, "")
+    .replace(/\bLangdock\b/gi, "")
+    .replace(/\bOpenRouter\b/gi, "")
+    .replace(/\bSUSE_SPECIALIST_MODE\b/g, "")
+    .replace(/\bspecialist(s)?\b/gi, "supporting")
+    .replace(/\brouted?\b/gi, "handled")
+    .replace(/\binternal agents?\b/gi, "supporting context")
+    .replace(/Live supporting execution is disabled because\s*\./gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([.,;:])/g, "$1")
+    .trim();
+}
+
+function ensurePublicReply(reply: string, fallback: string): string {
+  const cleaned = sanitizePublicReply(reply);
+  if (containsInternalLanguage(cleaned)) return fallback;
+  return cleaned || fallback;
+}
+
+function sanitizePublicReply(value: string): string {
+  return value
+    .replace(/\bLexi\b/g, "")
+    .replace(/\bEmil-Conrad\b/g, "")
+    .replace(/\bDiddy P\.\b/g, "")
+    .replace(/\bFood CO2 Analyst\b/g, "")
+    .replace(/\bLangdock\b/gi, "")
+    .replace(/\bOpenRouter\b/gi, "")
+    .replace(/\bSUSE_SPECIALIST_MODE\b/g, "")
+    .replace(/\binternal agents?\b/gi, "supporting context")
+    .replace(/\bother agents?\b/gi, "supporting context")
+    .replace(/\bspecialist(s)?\b/gi, "supporting")
+    .replace(/\brouting\b/gi, "handling")
+    .replace(/\brouted\b/gi, "handled")
+    .replace(/\borchestration\b/gi, "coordination")
+    .replace(/\borchestrated\b/gi, "coordinated")
+    .replace(/\bprivate background context\b/gi, "context")
+    .replace(/\bbackground coordination\b/gi, "context")
+    .replace(/\bI consulted\b/gi, "I reviewed")
+    .replace(/\bI checked with\b/gi, "I checked")
+    .replace(/[ \t]+/g, " ")
+    .replace(/[ \t]+([.,;:])/g, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function containsInternalLanguage(value: string): boolean {
+  return /\b(Lexi|Emil-Conrad|Diddy P\.|Food CO2 Analyst|Langdock|OpenRouter|SUSE_SPECIALIST_MODE|specialist|routing|routed|orchestration|orchestrated|internal agent|other agent|background coordination|private background context)\b/i.test(
+    value
+  );
 }
 
 function shouldAnswerDirectly(message: string): boolean {
@@ -353,7 +455,7 @@ function createDirectFallbackReply(message: string): string {
     return "Hi, I'm SuSE, your sustainability expert coworker. Send me a product, supplier, claim, footprint question, or Digital Product Passport brief and I'll help structure the next step.";
   }
 
-  return "Hi, I'm SuSE, your sustainability expert coworker. I can help with sustainability strategy, supply-chain risk, green-claim review, Digital Product Passports, and food CO2 footprint questions. Share the product, market, claim, supplier, or dataset you're working with and I'll decide whether to answer directly or bring in the right specialist context.";
+  return "Hi, I'm SuSE, your sustainability expert coworker. I can help with sustainability strategy, supply-chain risk, green-claim review, Digital Product Passports, and food CO2 footprint questions. Share the product, market, claim, supplier, or dataset you're working with and I'll give you a clear next step.";
 }
 
 function normalizeMessage(message: string): string {

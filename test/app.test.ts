@@ -57,7 +57,11 @@ test("responses route persists completed response and conversation items", async
   const body = response.json();
   assert.equal(body.object, "response");
   assert.equal(body.status, "completed");
-  assert.match(body.output_text, /Emil-Conrad/);
+  assert.equal(body.metadata.coordination, "background");
+  assert.doesNotMatch(body.output_text, /I routed this through/i);
+  assert.doesNotMatch(body.output_text, /Specialist findings/i);
+  assert.doesNotMatch(body.output_text, /Lexi|Emil-Conrad|Diddy P\.|Food CO2 Analyst/i);
+  assert.doesNotMatch(body.output_text, /Langdock|OpenRouter|SUSE_SPECIALIST_MODE/i);
 
   const fetched = await app.inject({
     method: "GET",
@@ -92,8 +96,8 @@ test("greetings and capability questions answer directly without specialist rout
 
   assert.equal(response.statusCode, 200);
   const body = response.json();
-  assert.equal(body.metadata.route, "direct");
-  assert.deepEqual(body.metadata.selectedSpecialists, []);
+  assert.equal(body.metadata.coordination, "direct");
+  assert.equal(body.metadata.selectedSpecialists, undefined);
   assert.doesNotMatch(body.output_text, /I routed this through/i);
   assert.doesNotMatch(body.output_text, /Live specialist execution is disabled/i);
   assert.match(body.output_text, /SuSE/);
