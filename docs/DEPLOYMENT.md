@@ -2,6 +2,25 @@
 
 SuSE is built for Railway with Railpack auto-detection.
 
+## Current Production
+
+```txt
+Project: SuSE Agent
+Environment: production
+App service: SusE
+Database service: Postgres
+Public URL: https://suse-production.up.railway.app
+Sokosumi base URL: https://suse-production.up.railway.app/v1
+```
+
+Current production status:
+
+- App deploy succeeds.
+- Railway Postgres is attached through `DATABASE_URL=${{Postgres.DATABASE_URL}}`.
+- `SUSE_STORAGE=postgres`.
+- Public smoke test passes.
+- `GET /health` reports `storageMode: "postgres"`.
+
 ## Build
 
 Railway should use the package scripts:
@@ -84,4 +103,3 @@ Capabilities:
 ```txt
 chat,tasks
 ```
-

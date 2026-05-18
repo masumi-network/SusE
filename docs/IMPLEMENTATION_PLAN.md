@@ -65,7 +65,7 @@ Acceptance:
 
 ## Phase 4 - Production Hardening
 
-Status: partially complete. Basic tests, log redaction, readiness checks, Postgres migrations, adapter timeouts, transient outbound retries, smoke tests, deployment docs, and partial specialist failure fallback exist.
+Status: partially complete. Basic tests, log redaction, readiness checks, Postgres migrations, adapter timeouts, transient outbound retries, smoke tests, production Railway deploy, live Railway Postgres, and partial specialist failure fallback exist.
 
 - Structured logs.
 - Redaction.
@@ -83,7 +83,7 @@ Acceptance:
 
 ## Phase 5 - Registration
 
-Status: not started.
+Status: production Railway deploy complete. Sokosumi marketplace registration still pending.
 
 - Register SuSE as Sokosumi coworker.
 - Base URL: `https://<domain>/v1`.

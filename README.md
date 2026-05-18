@@ -16,6 +16,14 @@ Implemented:
 - Langdock specialist adapter.
 - OpenRouter synthesis adapter.
 - Sokosumi Task Board poller with RUNNING/COMPLETED/FAILED events.
+- Railway production deploy.
+- Railway Postgres storage live and smoke-tested.
+
+Production URL:
+
+```txt
+https://suse-production.up.railway.app
+```
 
 ## Product Shape
 
