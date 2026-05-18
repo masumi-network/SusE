@@ -2,6 +2,8 @@
 
 ## Phase 0 - Scaffold
 
+Status: complete.
+
 - Node 20 service.
 - TypeScript or JS with strict structure.
 - Railway start command.
@@ -14,6 +16,8 @@ Acceptance:
 - `GET /ready` checks DB and required env.
 
 ## Phase 1 - Sokosumi Chat
+
+Status: complete for local/test contract. Needs live Sokosumi verification after deploy.
 
 - Conversations endpoints.
 - Responses endpoint.
@@ -29,6 +33,8 @@ Acceptance:
 
 ## Phase 2 - SuSE Core
 
+Status: complete for code path. Needs live Langdock/OpenRouter verification after secrets are configured.
+
 - SuSE identity prompt.
 - Specialist registry.
 - Deterministic routing.
@@ -43,6 +49,8 @@ Acceptance:
 
 ## Phase 3 - Task Board
 
+Status: complete for code path. Needs live Sokosumi Task Board verification after deploy.
+
 - Vendored/adapted `pi-sokosumi` client and poller.
 - Poll ready task events.
 - Claim with `RUNNING`.
@@ -56,6 +64,8 @@ Acceptance:
 - Duplicate poll/restart does not double-complete.
 
 ## Phase 4 - Production Hardening
+
+Status: partially complete. Basic tests, log redaction, readiness checks, Postgres migrations, adapter timeouts, and partial specialist failure fallback exist.
 
 - Structured logs.
 - Redaction.
@@ -72,6 +82,8 @@ Acceptance:
 - Failure paths return useful user-safe messages.
 
 ## Phase 5 - Registration
+
+Status: not started.
 
 - Register SuSE as Sokosumi coworker.
 - Base URL: `https://<domain>/v1`.

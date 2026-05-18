@@ -7,8 +7,12 @@ No secrets in git. Set these in Railway.
 | Var | Required | Purpose |
 | --- | --- | --- |
 | `PORT` | yes | HTTP port, Railway provides |
-| `PUBLIC_BASE_URL` | yes | SuSE public Railway URL |
-| `DATABASE_URL` | yes | Railway Postgres |
+| `SUSE_PUBLIC_BASE_URL` | yes | SuSE public Railway URL |
+| `SUSE_AGENT_NAME` | no | default `SuSE` |
+| `SUSE_RUNTIME_MODE` | yes | `stub` or `openrouter` |
+| `SUSE_SPECIALIST_MODE` | yes | `stub` or `langdock` |
+| `SUSE_STORAGE` | yes | `memory` or `postgres`; defaults to `postgres` when `DATABASE_URL` is set |
+| `DATABASE_URL` | yes for Postgres | Railway Postgres |
 | `NODE_ENV` | yes | `production` on Railway |
 
 ## Sokosumi
@@ -21,6 +25,7 @@ No secrets in git. Set these in Railway.
 | `SOKOSUMI_TASK_POLL_INTERVAL_MS` | no | default `15000` |
 | `SOKOSUMI_TASK_POLL_LIMIT` | no | default `20` |
 | `SOKOSUMI_TASK_POLL_MAX_PAGES` | no | default `10` |
+| `SOKOSUMI_TASK_COMPLETION_CREDITS` | no | default `0.1` |
 
 ## Langdock
 
@@ -28,10 +33,10 @@ No secrets in git. Set these in Railway.
 | --- | --- | --- |
 | `LANGDOCK_API_KEY` | yes | server-side Langdock API key |
 | `LANGDOCK_BASE_URL` | no | default `https://api.langdock.com` |
-| `LANGDOCK_LEXI_AGENT_ID` | yes | Lexi agent id |
-| `LANGDOCK_EMIL_CONRAD_AGENT_ID` | yes | Emil-Conrad agent id |
-| `LANGDOCK_DIDDY_P_AGENT_ID` | yes | Diddy P. agent id |
-| `LANGDOCK_FOOD_CO2_ANALYST_AGENT_ID` | yes | Food CO2 Analyst agent id |
+| `LANGDOCK_AGENT_ID_LEXI` | yes | Lexi agent id |
+| `LANGDOCK_AGENT_ID_EMIL_CONRAD` | yes | Emil-Conrad agent id |
+| `LANGDOCK_AGENT_ID_DIDDY_P` | yes | Diddy P. agent id |
+| `LANGDOCK_AGENT_ID_FOOD_CO2_ANALYST` | yes | Food CO2 Analyst agent id |
 | `LANGDOCK_TIMEOUT_MS` | no | default `45000` |
 
 ## OpenRouter
@@ -42,8 +47,8 @@ No secrets in git. Set these in Railway.
 | `OPENROUTER_BASE_URL` | no | default `https://openrouter.ai/api/v1` |
 | `OPENROUTER_MODEL` | yes later | chosen model |
 | `OPENROUTER_TEMPERATURE` | no | recommended `0.2` to `0.4` |
-| `OPENROUTER_MAX_COMPLETION_TOKENS` | no | default per model |
-| `OPENROUTER_TIMEOUT_MS` | no | default `60000` |
+| `OPENROUTER_MAX_COMPLETION_TOKENS` | no | default `1200` |
+| `OPENROUTER_TIMEOUT_MS` | no | default `30000` |
 | `OPENROUTER_SITE_URL` | no | public URL for OpenRouter headers |
 | `OPENROUTER_APP_NAME` | no | `SuSE` |
 
@@ -51,8 +56,7 @@ No secrets in git. Set these in Railway.
 
 | Var | Required | Purpose |
 | --- | --- | --- |
-| `LOG_LEVEL` | no | `info` default |
-| `LOG_REQUEST_BODIES` | no | default `false`; only enable in controlled tests |
+| `SUSE_LOG_LEVEL` | no | `info` default |
 
 ## Redaction
 

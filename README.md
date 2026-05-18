@@ -4,7 +4,18 @@ SuSE is a Sustainability Expert coworker for Sokosumi. Users discover and chat w
 
 ## Status
 
-Planning/docs only. No runtime code yet.
+Implemented:
+
+- Node 20 TypeScript service.
+- Health and readiness endpoints.
+- Sokosumi conversations and responses endpoints.
+- SSE streaming for `POST /v1/responses` with `stream: true`.
+- Memory storage for local/test use.
+- Postgres storage with startup migrations for Railway.
+- Deterministic specialist routing.
+- Langdock specialist adapter.
+- OpenRouter synthesis adapter.
+- Sokosumi Task Board poller with RUNNING/COMPLETED/FAILED events.
 
 ## Product Shape
 
@@ -44,6 +55,16 @@ Do not call the wrapper's public `/start_job` routes for SuSE v1 specialist work
 - [docs/IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md) - build phases
 - [docs/REFERENCES.md](./docs/REFERENCES.md) - local reference repos
 - [docs/adr/](./docs/adr/) - architecture decisions
+
+## Local Development
+
+```bash
+npm install
+npm test
+npm run dev
+```
+
+Default local mode uses in-memory storage and stub specialist/synthesis replies. Set `DATABASE_URL` or `SUSE_STORAGE=postgres` for Postgres. Set `SUSE_SPECIALIST_MODE=langdock` and `SUSE_RUNTIME_MODE=openrouter` after secrets are configured.
 
 ## Non-Goals For V1
 
