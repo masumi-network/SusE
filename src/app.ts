@@ -34,8 +34,9 @@ export function createApp({
     return undefined;
   });
 
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
     const statusCode = getErrorStatusCode(error);
+    request.log.error({ err: error, statusCode }, "request_failed");
     reply.status(statusCode).send({
       error: statusCode >= 500 ? "Internal Server Error" : "Bad Request",
       message: statusCode >= 500 ? "SuSE could not complete the request." : getErrorMessage(error)
