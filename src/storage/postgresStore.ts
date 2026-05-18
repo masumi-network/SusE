@@ -59,7 +59,7 @@ export async function createPostgresStore(databaseUrl: string): Promise<Conversa
           insert into suse_conversations (id, created_at, metadata)
           values ($1, $2, $3)
           `,
-          [conversation.id, conversation.created_at, conversation.metadata]
+          [conversation.id, conversation.created_at, JSON.stringify(conversation.metadata)]
         );
 
         await insertItems(client, conversation.id, items, 0);
@@ -85,7 +85,7 @@ export async function createPostgresStore(databaseUrl: string): Promise<Conversa
         where id = $1 and deleted_at is null
         returning id, created_at, metadata
         `,
-        [conversationId, normalizeMetadata(input.metadata)]
+        [conversationId, JSON.stringify(normalizeMetadata(input.metadata))]
       );
       return result.rows[0] ? toConversationObject(result.rows[0]) : undefined;
     },
@@ -217,7 +217,7 @@ export async function createPostgresStore(databaseUrl: string): Promise<Conversa
         set created_at = excluded.created_at,
             body = excluded.body
         `,
-        [response.id, response.created_at, response]
+        [response.id, response.created_at, JSON.stringify(response)]
       );
     },
 
@@ -288,7 +288,7 @@ async function insertItems(
         item.type,
         item.status,
         item.role,
-        item.content,
+        JSON.stringify(item.content),
         nowSeconds()
       ]
     );
