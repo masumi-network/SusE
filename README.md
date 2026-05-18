@@ -52,6 +52,7 @@ Do not call the wrapper's public `/start_job` routes for SuSE v1 specialist work
 - [docs/SOKOSUMI.md](./docs/SOKOSUMI.md) - Sokosumi endpoint contract
 - [docs/ORCHESTRATION.md](./docs/ORCHESTRATION.md) - routing and synthesis behavior
 - [docs/ENVIRONMENT.md](./docs/ENVIRONMENT.md) - env vars and secrets
+- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Railway deploy and smoke checks
 - [docs/IMPLEMENTATION_PLAN.md](./docs/IMPLEMENTATION_PLAN.md) - build phases
 - [docs/REFERENCES.md](./docs/REFERENCES.md) - local reference repos
 - [docs/adr/](./docs/adr/) - architecture decisions
@@ -65,6 +66,12 @@ npm run dev
 ```
 
 Default local mode uses in-memory storage and stub specialist/synthesis replies. Set `DATABASE_URL` or `SUSE_STORAGE=postgres` for Postgres. Set `SUSE_SPECIALIST_MODE=langdock` and `SUSE_RUNTIME_MODE=openrouter` after secrets are configured.
+
+Run endpoint smoke checks against a running local or deployed service:
+
+```bash
+SMOKE_BASE_URL=http://localhost:3000 npm run smoke
+```
 
 ## Non-Goals For V1
 

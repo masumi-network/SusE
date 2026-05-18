@@ -10,6 +10,7 @@
 ## Build Docs
 
 - [ENVIRONMENT.md](./ENVIRONMENT.md) - required config.
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Railway deploy and smoke checks.
 - [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) - phased build.
 - [REFERENCES.md](./REFERENCES.md) - local source references.
 
