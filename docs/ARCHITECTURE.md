@@ -81,6 +81,12 @@ Adapter around Langdock chat completions. It maps specialist slug to Langdock ag
 
 Depth target: router never knows HTTP headers, retries, timeout shape, or Langdock response parsing.
 
+### Orchestration Run
+
+Module implementing SuSE's Thinking Layer for one user request or Task Board task. It owns budget checks, direct replies, background worker selection, worker calls, synthesis, public-output sanitization, and internal run metadata.
+
+Depth target: chat and Task Board callers use one stable SuSE reply interface; orchestration details stay local.
+
 ### Synthesis Adapter
 
 Adapter around OpenRouter chat completions. It receives request, call plan, specialist findings, unresolved assumptions, and produces final SuSE answer.

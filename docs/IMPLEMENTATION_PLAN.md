@@ -38,6 +38,7 @@ Status: complete for code path. Needs live Langdock/OpenRouter verification afte
 - SuSE identity prompt.
 - Specialist registry.
 - Deterministic routing.
+- Orchestration Run module for budget checks, direct replies, background calls, synthesis, and public-output sanitization.
 - Langdock adapter.
 - OpenRouter synthesis adapter.
 
