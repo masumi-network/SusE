@@ -45,7 +45,7 @@ export type SokosumiUsageInput = {
   credits: number;
   idempotencyKey: string;
   referenceId?: string;
-  organizationId?: string;
+  organizationId: string | null;
   userId: string;
 };
 

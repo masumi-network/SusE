@@ -54,7 +54,7 @@ export async function chargeSokosumiConversationUsage({
       credits,
       idempotencyKey: runId,
       referenceId: referenceId || `suse/${protocol}`,
-      organizationId,
+      organizationId: organizationId || null,
       userId
     });
 

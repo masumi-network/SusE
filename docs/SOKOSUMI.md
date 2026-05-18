@@ -46,7 +46,7 @@ Authorization: Bearer <SOKOSUMI_COWORKER_API_KEY>
   "idempotencyKey": "<run id>",
   "credits": 0.1,
   "referenceId": "<response id>",
-  "organizationId": "<organization id>",
+  "organizationId": "<organization id or null>",
   "userId": "<user id>"
 }
 ```

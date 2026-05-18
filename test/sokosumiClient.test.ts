@@ -61,6 +61,38 @@ test("Sokosumi client checks delegated organization credits", async () => {
   assert.equal(capturedHeaders["x-delegation-organization-id"], "org-456");
 });
 
+test("Sokosumi client sends null organization id for personal usage charges", async () => {
+  const config = loadConfig({
+    PORT: "3000",
+    SUSE_STORAGE: "memory",
+    SOKOSUMI_COWORKER_API_KEY: "coworker-token"
+  });
+  let capturedBody: Record<string, unknown> = {};
+  const client = createHttpSokosumiClient({
+    config,
+    fetchImpl: async (_url, init) => {
+      capturedBody = init?.body ? JSON.parse(String(init.body)) : {};
+      return jsonResponse({ data: { id: "usage_1" } }, 201);
+    }
+  });
+
+  await client.postUsage({
+    credits: 0.1,
+    idempotencyKey: "run_123",
+    referenceId: "resp_123",
+    organizationId: null,
+    userId: "user-123"
+  });
+
+  assert.deepEqual(capturedBody, {
+    credits: 0.1,
+    idempotencyKey: "run_123",
+    referenceId: "resp_123",
+    organizationId: null,
+    userId: "user-123"
+  });
+});
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
