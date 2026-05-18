@@ -77,6 +77,31 @@ test("responses route persists completed response and conversation items", async
   await store.close();
 });
 
+test("greetings and capability questions answer directly without specialist routing", async () => {
+  const config = loadConfig({ PORT: "3000", SUSE_STORAGE: "memory" });
+  const store = createMemoryStore();
+  const app = createApp({ config, store });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/v1/responses",
+    payload: {
+      input: "hii how can you help me"
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.json();
+  assert.equal(body.metadata.route, "direct");
+  assert.deepEqual(body.metadata.selectedSpecialists, []);
+  assert.doesNotMatch(body.output_text, /I routed this through/i);
+  assert.doesNotMatch(body.output_text, /Live specialist execution is disabled/i);
+  assert.match(body.output_text, /SuSE/);
+
+  await app.close();
+  await store.close();
+});
+
 test("responses route supports SSE streaming", async () => {
   const config = loadConfig({ PORT: "3000", SUSE_STORAGE: "memory" });
   const store = createMemoryStore();

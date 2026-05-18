@@ -26,6 +26,25 @@ export async function createSuseReply({
   config: AppConfig;
 }): Promise<SuseReply> {
   const normalizedMessage = normalizeMessage(message);
+  const directReply = await createDirectReplyIfAppropriate({ config, message: normalizedMessage });
+  if (directReply) {
+    return {
+      agent: SUSE_PROFILE.name,
+      mode: directReply.mode,
+      model: directReply.model,
+      conversationId: conversationId || "",
+      input: normalizedMessage,
+      reply: directReply.reply,
+      metadata: {
+        ...(metadata || {}),
+        route: "direct",
+        selectedSpecialists: [],
+        specialistStatus: [],
+        synthesisProvider: directReply.provider
+      }
+    };
+  }
+
   const selectedSpecialists = selectSpecialistsForMessage(normalizedMessage);
   const findings = await collectSpecialistFindings({
     config,
@@ -55,6 +74,53 @@ export async function createSuseReply({
       })),
       synthesisProvider: synthesis.provider
     }
+  };
+}
+
+async function createDirectReplyIfAppropriate({
+  config,
+  message
+}: {
+  config: AppConfig;
+  message: string;
+}): Promise<
+  | {
+      provider: string;
+      mode: string;
+      model: string;
+      reply: string;
+    }
+  | undefined
+> {
+  if (!shouldAnswerDirectly(message)) return undefined;
+
+  if (config.runtimeMode === "openrouter") {
+    try {
+      const completion = await createOpenRouterChatReply({
+        config,
+        messages: createDirectMessages(message)
+      });
+      return {
+        provider: "openrouter",
+        mode: "direct",
+        model: completion.model,
+        reply: completion.reply
+      };
+    } catch {
+      return {
+        provider: "fallback",
+        mode: "direct",
+        model: "suse-direct",
+        reply: createDirectFallbackReply(message)
+      };
+    }
+  }
+
+  return {
+    provider: "direct",
+    mode: "direct",
+    model: "suse-direct",
+    reply: createDirectFallbackReply(message)
   };
 }
 
@@ -132,6 +198,22 @@ async function synthesizeReply({
     model: "suse-stub",
     reply: createFallbackSynthesis({ message, findings })
   };
+}
+
+function createDirectMessages(message: string): Array<{ role: "system" | "user"; content: string }> {
+  return [
+    {
+      role: "system",
+      content:
+        `${SUSE_SYSTEM_PROMPT}\n\n` +
+        "Answer directly as SuSE. Do not consult or mention internal specialists. " +
+        "For greetings or capability questions, briefly explain how you can help and ask for the user's sustainability context."
+    },
+    {
+      role: "user",
+      content: message
+    }
+  ];
 }
 
 function createSynthesisMessages({
@@ -248,6 +330,30 @@ function trimForReply(value: string): string {
   const normalized = value.replace(/\s+/g, " ").trim();
   if (normalized.length <= 700) return normalized;
   return `${normalized.slice(0, 697)}...`;
+}
+
+function shouldAnswerDirectly(message: string): boolean {
+  const normalized = message
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized || normalized === "empty message") return true;
+  if (/^(hi+|hello+|hey+|yo|gm|good morning|good afternoon|good evening)\b/.test(normalized)) return true;
+  if (/\b(how can you help|what can you do|who are you|introduce yourself|help me get started)\b/.test(normalized)) {
+    return true;
+  }
+
+  return false;
+}
+
+function createDirectFallbackReply(message: string): string {
+  if (message === "empty message") {
+    return "Hi, I'm SuSE, your sustainability expert coworker. Send me a product, supplier, claim, footprint question, or Digital Product Passport brief and I'll help structure the next step.";
+  }
+
+  return "Hi, I'm SuSE, your sustainability expert coworker. I can help with sustainability strategy, supply-chain risk, green-claim review, Digital Product Passports, and food CO2 footprint questions. Share the product, market, claim, supplier, or dataset you're working with and I'll decide whether to answer directly or bring in the right specialist context.";
 }
 
 function normalizeMessage(message: string): string {
