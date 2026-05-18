@@ -6,12 +6,15 @@ import {
   normalizeMetadata
 } from "./normalize.js";
 import type {
+  ClaimTaskRunInput,
   ConversationDeletedObject,
   ConversationItem,
   ConversationItemList,
   ConversationObject,
   ConversationStore,
-  CreateConversationInput
+  CreateConversationInput,
+  TaskRunClaim,
+  TaskRunStatus
 } from "./types.js";
 
 type ConversationRecord = ConversationObject & {
@@ -19,9 +22,25 @@ type ConversationRecord = ConversationObject & {
   deleted: boolean;
 };
 
+type TaskRunRecord = {
+  runId: string;
+  correlationId: string;
+  eventId: string;
+  taskId: string;
+  status: TaskRunStatus;
+  attempt: number;
+  leaseOwner: string;
+  leaseExpiresAt: number;
+  claimEventId?: string;
+  completionEventId?: string;
+  lastError?: string;
+};
+
 export function createMemoryStore(): ConversationStore {
   const conversations = new Map<string, ConversationRecord>();
   const responses = new Map<string, Record<string, unknown>>();
+  const taskRunsByEventId = new Map<string, TaskRunRecord>();
+  const taskRunsByRunId = new Map<string, TaskRunRecord>();
 
   return {
     async ready() {
@@ -31,6 +50,8 @@ export function createMemoryStore(): ConversationStore {
     async close() {
       conversations.clear();
       responses.clear();
+      taskRunsByEventId.clear();
+      taskRunsByRunId.clear();
     },
 
     async createConversation(input: CreateConversationInput = {}) {
@@ -128,8 +149,84 @@ export function createMemoryStore(): ConversationStore {
 
     async getResponse(responseId: string) {
       return clone(responses.get(responseId));
+    },
+
+    async claimTaskRun(input: ClaimTaskRunInput): Promise<TaskRunClaim> {
+      const existing = taskRunsByEventId.get(input.eventId);
+      const now = Date.now();
+
+      if (existing) {
+        if (existing.status === "claimed" || existing.status === "running") {
+          if (existing.leaseExpiresAt <= now) {
+            existing.status = "claimed";
+            existing.attempt += 1;
+            existing.leaseOwner = input.leaseOwner;
+            existing.leaseExpiresAt = now + input.leaseMs;
+            existing.lastError = undefined;
+            saveTaskRun(existing);
+            return toTaskRunClaim(existing, true);
+          }
+
+          return {
+            ...toTaskRunClaim(existing, false),
+            reason: "lease_active"
+          };
+        }
+
+        return {
+          ...toTaskRunClaim(existing, false),
+          reason: "already_processed"
+        };
+      }
+
+      const record: TaskRunRecord = {
+        runId: createId("run"),
+        correlationId: createId("corr"),
+        eventId: input.eventId,
+        taskId: input.taskId,
+        status: "claimed",
+        attempt: 1,
+        leaseOwner: input.leaseOwner,
+        leaseExpiresAt: now + input.leaseMs
+      };
+      saveTaskRun(record);
+      return toTaskRunClaim(record, true);
+    },
+
+    async markTaskRunRunning({ runId, claimEventId }) {
+      updateTaskRun(taskRunsByRunId, runId, (record) => {
+        record.status = "running";
+        record.claimEventId = claimEventId;
+      });
+    },
+
+    async markTaskRunCompleted({ runId, completionEventId }) {
+      updateTaskRun(taskRunsByRunId, runId, (record) => {
+        record.status = "completed";
+        record.completionEventId = completionEventId;
+      });
+    },
+
+    async markTaskRunFailed({ runId, error }) {
+      updateTaskRun(taskRunsByRunId, runId, (record) => {
+        record.status = "failed";
+        record.lastError = errorMessage(error);
+      });
+    },
+
+    async markTaskRunSkipped({ eventId, reason }) {
+      const existing = taskRunsByEventId.get(eventId);
+      if (!existing) return;
+      existing.status = "skipped";
+      existing.lastError = reason;
+      saveTaskRun(existing);
     }
   };
+
+  function saveTaskRun(record: TaskRunRecord): void {
+    taskRunsByEventId.set(record.eventId, record);
+    taskRunsByRunId.set(record.runId, record);
+  }
 }
 
 function getActiveConversation(
@@ -165,3 +262,26 @@ function clone<T>(value: T): T {
   return value === undefined ? value : JSON.parse(JSON.stringify(value));
 }
 
+function toTaskRunClaim(record: TaskRunRecord, claimed: boolean): TaskRunClaim {
+  return {
+    claimed,
+    runId: record.runId,
+    correlationId: record.correlationId,
+    status: record.status,
+    attempt: record.attempt
+  };
+}
+
+function updateTaskRun(
+  taskRunsByRunId: Map<string, TaskRunRecord>,
+  runId: string,
+  update: (record: TaskRunRecord) => void
+): void {
+  const record = taskRunsByRunId.get(runId);
+  if (!record) return;
+  update(record);
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Task processing failed.";
+}

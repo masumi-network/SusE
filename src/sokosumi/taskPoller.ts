@@ -1,3 +1,4 @@
+import type { TaskRunStore } from "../storage/types.js";
 import type { SokosumiClient, SokosumiEvent, SokosumiTask, SokosumiTaskEventInput } from "./types.js";
 
 export type SokosumiTaskPoller = {
@@ -15,7 +16,10 @@ export function createSokosumiTaskPoller({
   processTask,
   createRunningEvent = defaultCreateRunningEvent,
   createCompletedEvent,
-  createFailedEvent = defaultCreateFailedEvent
+  createFailedEvent = defaultCreateFailedEvent,
+  taskRunStore,
+  leaseMs,
+  leaseOwner = `suse-${process.pid}`
 }: {
   client: SokosumiClient;
   intervalMs: number;
@@ -26,8 +30,12 @@ export function createSokosumiTaskPoller({
   createRunningEvent?: (input: { event: SokosumiEvent; task: SokosumiTask }) => SokosumiTaskEventInput | undefined;
   createCompletedEvent: (input: { event: SokosumiEvent; task: SokosumiTask; result: string }) => SokosumiTaskEventInput;
   createFailedEvent?: (input: { event: SokosumiEvent; task: SokosumiTask; error: unknown }) => SokosumiTaskEventInput;
+  taskRunStore?: TaskRunStore;
+  leaseMs?: number;
+  leaseOwner?: string;
 }): SokosumiTaskPoller {
   const processedEventIds = new Set<string>();
+  const taskRunLeaseMs = leaseMs ?? Math.max(intervalMs * 4, 60_000);
   let timer: NodeJS.Timeout | undefined;
   let running = false;
 
@@ -82,7 +90,8 @@ export function createSokosumiTaskPoller({
   }
 
   async function handleEvent(event: SokosumiEvent): Promise<void> {
-    if (!event.id || processedEventIds.has(event.id)) return;
+    if (!event.id) return;
+    if (!taskRunStore && processedEventIds.has(event.id)) return;
     if (!event.taskId) {
       processedEventIds.add(event.id);
       return;
@@ -94,22 +103,75 @@ export function createSokosumiTaskPoller({
       return;
     }
 
-    processedEventIds.add(event.id);
-
     if (hasTaskProgress(task, event)) {
+      processedEventIds.add(event.id);
+      if (taskRunStore) {
+        await taskRunStore.markTaskRunSkipped({
+          eventId: event.id,
+          reason: "task already has coworker progress after trigger event"
+        });
+      }
       log(logger, "sokosumi_task_already_processed", { eventId: event.id, taskId: event.taskId });
       return;
     }
 
+    const claim = taskRunStore
+      ? await taskRunStore.claimTaskRun({
+          eventId: event.id,
+          taskId: event.taskId,
+          triggerStatus: event.status === undefined ? null : event.status,
+          leaseOwner,
+          leaseMs: taskRunLeaseMs
+        })
+      : undefined;
+
+    if (taskRunStore && !claim?.claimed) {
+      log(logger, "sokosumi_task_event_not_claimed", {
+        eventId: event.id,
+        taskId: event.taskId,
+        status: claim?.status,
+        reason: claim?.reason
+      });
+      return;
+    }
+
+    processedEventIds.add(event.id);
+
     try {
       const runningEvent = createRunningEvent({ event, task });
-      if (runningEvent) await client.createTaskEvent(event.taskId, runningEvent);
+      if (runningEvent) {
+        const createdRunningEvent = await client.createTaskEvent(event.taskId, runningEvent);
+        if (claim?.runId) {
+          await taskRunStore?.markTaskRunRunning({
+            runId: claim.runId,
+            claimEventId: extractCreatedEventId(createdRunningEvent)
+          });
+        }
+      }
 
       const result = await processTask({ event, task });
-      await client.createTaskEvent(event.taskId, createCompletedEvent({ event, task, result }));
+      const createdCompletedEvent = await client.createTaskEvent(
+        event.taskId,
+        createCompletedEvent({ event, task, result })
+      );
+      if (claim?.runId) {
+        await taskRunStore?.markTaskRunCompleted({
+          runId: claim.runId,
+          completionEventId: extractCreatedEventId(createdCompletedEvent),
+          finalAnswer: result
+        });
+      }
 
-      log(logger, "sokosumi_task_completed", { eventId: event.id, taskId: event.taskId });
+      log(logger, "sokosumi_task_completed", {
+        eventId: event.id,
+        taskId: event.taskId,
+        runId: claim?.runId,
+        correlationId: claim?.correlationId
+      });
     } catch (error) {
+      if (claim?.runId) {
+        await taskRunStore?.markTaskRunFailed({ runId: claim.runId, error });
+      }
       const failedEvent = createFailedEvent({ event, task, error });
       if (failedEvent) await client.createTaskEvent(event.taskId, failedEvent);
       throw error;
@@ -262,3 +324,13 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Task processing failed.";
 }
 
+function extractCreatedEventId(value: unknown): string | undefined {
+  if (!isRecord(value)) return undefined;
+  if (typeof value.id === "string") return value.id;
+  if (isRecord(value.data) && typeof value.data.id === "string") return value.data.id;
+  return undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}

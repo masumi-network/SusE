@@ -49,7 +49,7 @@ Acceptance:
 
 ## Phase 3 - Task Board
 
-Status: complete for code path. Poller starts in production with verified coworker API key; needs a real Task Board event smoke test.
+Status: complete. Poller starts in production with verified coworker API key, real Task Board event smoke tests pass, and durable task/run idempotency is implemented.
 
 - Vendored/adapted `pi-sokosumi` client and poller.
 - Poll ready task events.
@@ -57,11 +57,13 @@ Status: complete for code path. Poller starts in production with verified cowork
 - Process through SuSE core.
 - Post `COMPLETED` or `FAILED`.
 - Skip already-progressed tasks after restart.
+- Store task event/run claims in Postgres for cross-restart idempotency.
 
 Acceptance:
 
 - Ready task processed once.
 - Duplicate poll/restart does not double-complete.
+- Stale claimed/running events can be reclaimed after lease expiry.
 
 ## Phase 4 - Production Hardening
 

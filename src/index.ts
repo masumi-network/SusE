@@ -6,7 +6,7 @@ import { createConversationStore } from "./storage/index.js";
 const config = loadConfig();
 const store = await createConversationStore(config);
 const app = createApp({ config, store });
-const taskWorker = startSokosumiTaskWorker({ config });
+const taskWorker = startSokosumiTaskWorker({ config, taskRunStore: store });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.once(signal, async () => {

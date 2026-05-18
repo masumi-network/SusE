@@ -41,6 +41,33 @@ export type CreateConversationInput = {
   items?: unknown;
 };
 
+export type TaskRunStatus = "claimed" | "running" | "completed" | "failed" | "skipped";
+
+export type ClaimTaskRunInput = {
+  eventId: string;
+  taskId: string;
+  triggerStatus?: string | null;
+  leaseOwner: string;
+  leaseMs: number;
+};
+
+export type TaskRunClaim = {
+  claimed: boolean;
+  runId?: string;
+  correlationId?: string;
+  status?: TaskRunStatus;
+  attempt?: number;
+  reason?: "already_processed" | "lease_active" | "missing_run";
+};
+
+export type TaskRunStore = {
+  claimTaskRun(input: ClaimTaskRunInput): Promise<TaskRunClaim>;
+  markTaskRunRunning(input: { runId: string; claimEventId?: string }): Promise<void>;
+  markTaskRunCompleted(input: { runId: string; completionEventId?: string; finalAnswer: string }): Promise<void>;
+  markTaskRunFailed(input: { runId: string; error: unknown }): Promise<void>;
+  markTaskRunSkipped(input: { eventId: string; reason: string }): Promise<void>;
+};
+
 export type ConversationStore = {
   ready(): Promise<void>;
   close(): Promise<void>;
@@ -55,5 +82,4 @@ export type ConversationStore = {
   getLastUserText(conversationRef: unknown): Promise<string>;
   saveResponse(response: { id: string; created_at: number } & Record<string, unknown>): Promise<void>;
   getResponse(responseId: string): Promise<Record<string, unknown> | undefined>;
-};
-
+} & TaskRunStore;

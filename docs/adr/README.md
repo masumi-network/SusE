@@ -6,4 +6,4 @@ Architecture Decision Records for the SuSE coworker.
 - [0002: Direct Langdock Specialist Calls](0002-direct-langdock-specialist-calls.md)
 - [0003: Vendored Sokosumi Layer](0003-vendored-sokosumi-layer.md)
 - [0004: OpenRouter Synthesis Layer](0004-openrouter-synthesis-layer.md)
-
+- [0005: Durable Task Run Ledger](0005-durable-task-run-ledger.md)

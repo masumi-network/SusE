@@ -96,6 +96,7 @@ Use Postgres for durable state:
 - response id -> thread id mapping
 - completed responses
 - task event cursor/idempotency
+- task run ledger with leases, attempts, event ids, hashes, and final state
 - task status and completion payload
 
 Use memory only for active request state:

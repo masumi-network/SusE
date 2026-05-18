@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createSokosumiTaskPoller, hasTaskProgress } from "../src/sokosumi/taskPoller.js";
+import { createMemoryStore } from "../src/storage/memoryStore.js";
 import type { SokosumiClient, SokosumiTaskEventInput } from "../src/sokosumi/types.js";
 
 const silentLogger = {
@@ -106,6 +107,123 @@ test("task poller skips task with coworker progress after trigger event", async 
   assert.equal(createdEvents.length, 0);
 });
 
+test("task poller ledger skips duplicate event across poller instances", async () => {
+  const store = createMemoryStore();
+  let processCount = 0;
+  const createdEvents: Array<{ taskId: string; body: SokosumiTaskEventInput }> = [];
+  const client: SokosumiClient = {
+    async listCoworkerEvents() {
+      return {
+        events: [{ id: "evt_ledger", taskId: "task_ledger", status: "READY" }]
+      };
+    },
+    async getTask() {
+      return {
+        id: "task_ledger",
+        events: [{ id: "evt_ledger", taskId: "task_ledger", status: "READY" }]
+      };
+    },
+    async createTaskEvent(taskId, body) {
+      createdEvents.push({ taskId, body });
+      return { data: { id: `created_${createdEvents.length}` } };
+    }
+  };
+
+  const createPoller = () =>
+    createSokosumiTaskPoller({
+      client,
+      intervalMs: 1000,
+      limit: 20,
+      maxPages: 1,
+      logger: silentLogger,
+      taskRunStore: store,
+      async processTask() {
+        processCount += 1;
+        return "Done";
+      },
+      createCompletedEvent({ result }) {
+        return {
+          status: "COMPLETED",
+          origin: "SOKOSUMI",
+          comment: result
+        };
+      }
+    });
+
+  await createPoller().tick();
+  await createPoller().tick();
+
+  assert.equal(processCount, 1);
+  assert.deepEqual(
+    createdEvents.map((event) => event.body.status),
+    ["RUNNING", "COMPLETED"]
+  );
+
+  await store.close();
+});
+
+test("task poller ledger reclaims stale running event", async () => {
+  const store = createMemoryStore();
+  const claim = await store.claimTaskRun({
+    eventId: "evt_stale",
+    taskId: "task_stale",
+    triggerStatus: "READY",
+    leaseOwner: "test-owner",
+    leaseMs: 1
+  });
+  assert.ok(claim.runId);
+  await store.markTaskRunRunning({ runId: claim.runId });
+  await new Promise((resolve) => setTimeout(resolve, 5));
+
+  let processCount = 0;
+  const createdEvents: Array<{ taskId: string; body: SokosumiTaskEventInput }> = [];
+  const client: SokosumiClient = {
+    async listCoworkerEvents() {
+      return {
+        events: [{ id: "evt_stale", taskId: "task_stale", status: "READY" }]
+      };
+    },
+    async getTask() {
+      return {
+        id: "task_stale",
+        events: [{ id: "evt_stale", taskId: "task_stale", status: "READY" }]
+      };
+    },
+    async createTaskEvent(taskId, body) {
+      createdEvents.push({ taskId, body });
+      return {};
+    }
+  };
+
+  const poller = createSokosumiTaskPoller({
+    client,
+    intervalMs: 1000,
+    limit: 20,
+    maxPages: 1,
+    logger: silentLogger,
+    taskRunStore: store,
+    leaseMs: 1,
+    async processTask() {
+      processCount += 1;
+      return "Recovered";
+    },
+    createCompletedEvent({ result }) {
+      return {
+        status: "COMPLETED",
+        origin: "SOKOSUMI",
+        comment: result
+      };
+    }
+  });
+
+  await poller.tick();
+
+  assert.equal(processCount, 1);
+  assert.equal(createdEvents[1]?.body.comment, "Recovered");
+
+  await store.close();
+});
+
 test("hasTaskProgress detects progress after trigger", () => {
   assert.equal(
     hasTaskProgress(
@@ -120,4 +238,3 @@ test("hasTaskProgress detects progress after trigger", () => {
     true
   );
 });
-

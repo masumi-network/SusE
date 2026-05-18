@@ -1,4 +1,5 @@
 import type { AppConfig } from "../config.js";
+import type { TaskRunStore } from "../storage/types.js";
 import { createSuseReply } from "../suse/agent.js";
 import { createHttpSokosumiClient } from "./client.js";
 import { createSokosumiTaskPoller, type SokosumiTaskPoller } from "./taskPoller.js";
@@ -6,9 +7,11 @@ import type { SokosumiTask } from "./types.js";
 
 export function startSokosumiTaskWorker({
   config,
+  taskRunStore,
   logger = console
 }: {
   config: AppConfig;
+  taskRunStore?: TaskRunStore;
   logger?: Pick<Console, "log" | "error">;
 }): SokosumiTaskPoller | undefined {
   if (!config.sokosumi.taskPollerEnabled) return undefined;
@@ -19,6 +22,7 @@ export function startSokosumiTaskWorker({
     intervalMs: config.sokosumi.taskPollIntervalMs,
     limit: config.sokosumi.taskPollLimit,
     maxPages: config.sokosumi.taskPollMaxPages,
+    taskRunStore,
     logger,
     async processTask({ task }) {
       const result = await createSuseReply({
@@ -80,4 +84,3 @@ function jsonSummary(value: unknown): string {
 function stringValue(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
-
