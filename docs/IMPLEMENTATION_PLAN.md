@@ -67,11 +67,13 @@ Acceptance:
 
 ## Phase 4 - Production Hardening
 
-Status: partially complete. Basic tests, log redaction, readiness checks, Postgres migrations, adapter timeouts, transient outbound retries, smoke tests, production Railway deploy, live Railway Postgres, and partial specialist failure fallback exist.
+Status: partially complete. Basic tests, log redaction, readiness checks, Postgres migrations, adapter timeouts, transient outbound retries, smoke tests, production Railway deploy, live Railway Postgres, durable task ledger, input/worker budget caps, internal run correlation logs, and partial specialist failure fallback exist.
 
 - Structured logs.
 - Redaction.
 - Timeouts/retries.
+- Input and worker fanout budgets.
+- Internal run correlation logs.
 - Partial specialist failure behavior.
 - DB idempotency.
 - Basic tests.

@@ -7,3 +7,4 @@ Architecture Decision Records for the SuSE coworker.
 - [0003: Vendored Sokosumi Layer](0003-vendored-sokosumi-layer.md)
 - [0004: OpenRouter Synthesis Layer](0004-openrouter-synthesis-layer.md)
 - [0005: Durable Task Run Ledger](0005-durable-task-run-ledger.md)
+- [0006: Runtime Budgets And Run Logs](0006-runtime-budgets-and-run-logs.md)

@@ -12,6 +12,8 @@ No secrets in git. Set these in Railway.
 | `SUSE_RUNTIME_MODE` | yes | `stub` or `openrouter` |
 | `SUSE_SPECIALIST_MODE` | yes | `stub` or `langdock` |
 | `SUSE_STORAGE` | yes | `memory` or `postgres`; defaults to `postgres` when `DATABASE_URL` is set |
+| `SUSE_MAX_INPUT_CHARS` | no | default `12000`; over-limit requests get a safe shortening prompt |
+| `SUSE_MAX_SPECIALISTS_PER_RUN` | no | default `4`; caps background worker fanout |
 | `DATABASE_URL` | yes for Postgres | Railway Postgres |
 | `NODE_ENV` | yes | `production` on Railway |
 

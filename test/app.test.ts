@@ -137,6 +137,54 @@ test("prompt injection does not reveal background process or instructions", asyn
   await store.close();
 });
 
+test("responses route rejects over-budget input without internal metadata", async () => {
+  const config = loadConfig({ PORT: "3000", SUSE_STORAGE: "memory", SUSE_MAX_INPUT_CHARS: "12" });
+  const store = createMemoryStore();
+  const app = createApp({ config, store });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/v1/responses",
+    payload: {
+      input: "This sustainability request is deliberately too long."
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.json();
+  assert.equal(body.model, "suse");
+  assert.match(body.output_text, /too large/i);
+  assert.equal(body.internal, undefined);
+  assert.equal(body.metadata.runId, undefined);
+  assert.equal(body.metadata.correlationId, undefined);
+
+  await app.close();
+  await store.close();
+});
+
+test("plain chat endpoint does not expose internal run fields", async () => {
+  const config = loadConfig({ PORT: "3000", SUSE_STORAGE: "memory" });
+  const store = createMemoryStore();
+  const app = createApp({ config, store });
+
+  const response = await app.inject({
+    method: "POST",
+    url: "/chat",
+    payload: {
+      message: "hii how can you help me"
+    }
+  });
+
+  assert.equal(response.statusCode, 200);
+  const body = response.json();
+  assert.equal(body.internal, undefined);
+  assert.equal(body.model, "suse");
+  assert.match(body.reply, /SuSE/);
+
+  await app.close();
+  await store.close();
+});
+
 test("fallback does not echo adversarial request keys", async () => {
   const config = loadConfig({ PORT: "3000", SUSE_STORAGE: "memory" });
   const store = createMemoryStore();

@@ -6,7 +6,7 @@ import { toChatCompletionsResult, toResponsesApiResult, toResponsesStreamEvents 
 import { sendSse } from "./http/sse.js";
 import { normalizeConversationId, toAssistantConversationItem, toConversationInputItems } from "./storage/normalize.js";
 import type { ConversationStore } from "./storage/types.js";
-import { createSuseReply } from "./suse/agent.js";
+import { createSuseReply, type SuseReply } from "./suse/agent.js";
 import { SUSE_PROFILE } from "./suse/identity.js";
 import { nowSeconds } from "./utils/ids.js";
 
@@ -101,12 +101,14 @@ export function createApp({
 
   app.post("/chat", async (request) => {
     const body = asRecord(request.body);
-    return createSuseReply({
+    const result = await createSuseReply({
       message: stringValue(body.message) || stringValue(body.input) || stringValue(body.prompt),
       conversationId: stringValue(body.conversationId),
       metadata: createRequestMetadata(request.headers, body.metadata, { protocol: "chat" }),
       config
     });
+    logSuseRun(request.log, result, "chat");
+    return toPublicSuseReply(result);
   });
 
   app.post("/v1/conversations", async (request) => {
@@ -172,6 +174,7 @@ export function createApp({
       }),
       config
     });
+    logSuseRun(request.log, result, "responses");
     const responseResult = toResponsesApiResult(result, conversationRef);
 
     await store.saveResponse(responseResult);
@@ -205,6 +208,7 @@ export function createApp({
       }),
       config
     });
+    logSuseRun(request.log, result, "chat_completions");
     return toChatCompletionsResult(result);
   });
 
@@ -239,6 +243,27 @@ function createRequestMetadata(
       coworkerSlug: headerValue(headers["x-coworker-slug"])
     }
   };
+}
+
+function logSuseRun(logger: { info: (obj: Record<string, unknown>, msg?: string) => void }, result: SuseReply, protocol: string): void {
+  logger.info(
+    {
+      event: "suse_run_completed",
+      protocol,
+      runId: result.internal.runId,
+      correlationId: result.internal.correlationId,
+      route: result.internal.route,
+      selectedWorkerCount: result.internal.selectedWorkerCount,
+      inputChars: result.internal.inputChars,
+      mode: result.mode
+    },
+    "suse_run_completed"
+  );
+}
+
+function toPublicSuseReply(result: SuseReply): Omit<SuseReply, "internal"> {
+  const { internal: _internal, ...publicResult } = result;
+  return publicResult;
 }
 
 function getErrorStatusCode(error: unknown): number {

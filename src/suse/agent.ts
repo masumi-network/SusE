@@ -1,4 +1,5 @@
 import type { AppConfig } from "../config.js";
+import { createId } from "../utils/ids.js";
 import { SUSE_PROFILE, SUSE_SYSTEM_PROMPT } from "./identity.js";
 import { callLangdockSpecialist, type LangdockFinding } from "./langdockClient.js";
 import { createOpenRouterChatReply } from "./openRouterClient.js";
@@ -12,6 +13,13 @@ export type SuseReply = {
   reply: string;
   input: string;
   metadata: Record<string, unknown>;
+  internal: {
+    runId: string;
+    correlationId: string;
+    route: "direct" | "background" | "budget_limited";
+    selectedWorkerCount: number;
+    inputChars: number;
+  };
 };
 
 export async function createSuseReply({
@@ -26,6 +34,30 @@ export async function createSuseReply({
   config: AppConfig;
 }): Promise<SuseReply> {
   const normalizedMessage = normalizeMessage(message);
+  const runId = createId("run");
+  const correlationId = createId("corr");
+
+  if (normalizedMessage.length > config.budgets.maxInputChars) {
+    return {
+      agent: SUSE_PROFILE.name,
+      mode: "budget_limited",
+      model: SUSE_PROFILE.slug,
+      conversationId: conversationId || "",
+      input: normalizedMessage,
+      reply: createInputLimitReply(config.budgets.maxInputChars),
+      metadata: {
+        ...(metadata || {})
+      },
+      internal: {
+        runId,
+        correlationId,
+        route: "budget_limited",
+        selectedWorkerCount: 0,
+        inputChars: normalizedMessage.length
+      }
+    };
+  }
+
   const directReply = await createDirectReplyIfAppropriate({ config, message: normalizedMessage });
   if (directReply) {
     return {
@@ -37,11 +69,18 @@ export async function createSuseReply({
       reply: ensurePublicReply(directReply.reply, createDirectFallbackReply(normalizedMessage)),
       metadata: {
         ...(metadata || {})
+      },
+      internal: {
+        runId,
+        correlationId,
+        route: "direct",
+        selectedWorkerCount: 0,
+        inputChars: normalizedMessage.length
       }
     };
   }
 
-  const selectedSpecialists = selectSpecialistsForMessage(normalizedMessage);
+  const selectedSpecialists = selectSpecialistsForMessage(normalizedMessage).slice(0, config.budgets.maxSpecialistsPerRun);
   const findings = await collectSpecialistFindings({
     config,
     message: normalizedMessage,
@@ -68,6 +107,13 @@ export async function createSuseReply({
     ),
     metadata: {
       ...(metadata || {})
+    },
+    internal: {
+      runId,
+      correlationId,
+      route: "background",
+      selectedWorkerCount: selectedSpecialists.length,
+      inputChars: normalizedMessage.length
     }
   };
 }
@@ -494,6 +540,14 @@ function createDirectFallbackReply(message: string): string {
   }
 
   return "Hi, I'm SuSE, your sustainability expert coworker. I work with expert support in the background, but you can treat me as your single point of contact. I can help with sustainability strategy, supply-chain risk, green-claim review, Digital Product Passports, and food CO2 footprint questions. Share the product, market, claim, supplier, or dataset you're working with and I'll give you a clear next step.";
+}
+
+function createInputLimitReply(maxInputChars: number): string {
+  return [
+    "I can help, but this request is too large to process safely in one pass.",
+    `Please shorten it to under ${maxInputChars} characters or split it into smaller parts.`,
+    "For best results, send the product/category, market, claim wording, supplier/materials, and any footprint data first."
+  ].join(" ");
 }
 
 function normalizeMessage(message: string): string {

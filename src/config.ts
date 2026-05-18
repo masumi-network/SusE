@@ -19,6 +19,10 @@ export type AppConfig = {
   specialistMode: SpecialistMode;
   storageMode: StorageMode;
   databaseUrl: string;
+  budgets: {
+    maxInputChars: number;
+    maxSpecialistsPerRun: number;
+  };
   openRouter: {
     apiKey: string;
     baseUrl: string;
@@ -65,6 +69,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     specialistMode: normalizeSpecialistMode(env.SUSE_SPECIALIST_MODE),
     storageMode,
     databaseUrl,
+    budgets: {
+      maxInputChars: parsePositiveInteger(env.SUSE_MAX_INPUT_CHARS, 12000),
+      maxSpecialistsPerRun: parsePositiveInteger(env.SUSE_MAX_SPECIALISTS_PER_RUN, 4)
+    },
     openRouter: {
       apiKey: env.OPENROUTER_API_KEY || "",
       baseUrl: stripTrailingSlash(env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1"),
