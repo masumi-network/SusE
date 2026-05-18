@@ -284,7 +284,6 @@ function createStubSpecialistFinding({
 }): string {
   return [
     createStubGuidanceForSpecialist(specialist),
-    `Request: ${message}`,
     "State assumptions clearly and ask for missing product, market, supplier, claim, or footprint data when needed."
   ].join("\n");
 }
@@ -321,8 +320,6 @@ function createFallbackSynthesis({
 
   return [
     "Here is the best sustainability read based on the details available.",
-    "",
-    `Request:\n${message}`,
     "",
     completedFindings || createGenericFallbackGuidance(message),
     failed.length > 0 || failureReason ? "\nSome supporting context was unavailable, so treat this as a preliminary answer." : "",
@@ -385,7 +382,12 @@ function trimForReply(value: string): string {
 }
 
 function sanitizeFindingForReply(value: string): string {
-  return trimForReply(value)
+  const withoutRequestEcho = value
+    .split("\n")
+    .filter((line) => !line.trim().toLowerCase().startsWith("request:"))
+    .join("\n");
+
+  return trimForReply(withoutRequestEcho)
     .replace(/\bLexi\b/g, "")
     .replace(/\bEmil-Conrad\b/g, "")
     .replace(/\bDiddy P\.\b/g, "")
